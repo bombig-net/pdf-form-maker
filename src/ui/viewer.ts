@@ -11,7 +11,7 @@ const SNAP_PX = 6;
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
 type Handle = (typeof HANDLES)[number];
 
-const TYPE_LABEL: Record<FieldType, string> = { text: 'Text', area: 'Text area', check: 'Checkbox', radio: 'Radio', reset: 'Reset' };
+const TYPE_LABEL: Record<FieldType, string> = { text: 'Text', area: 'Text area', check: 'Checkbox', radio: 'Radio', dropdown: 'Dropdown', reset: 'Reset' };
 
 interface PageView {
   page: PageRef;
@@ -173,7 +173,8 @@ export class Viewer {
       const el = h('div.field', {
         'data-id': f.id, 'data-type': f.type, role: 'button', tabindex: '-1',
         'aria-label': `${TYPE_LABEL[f.type]}: ${tag}`,
-        style: `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`,
+        class: f.comb && f.maxLength > 0 ? 'comb' : undefined,
+        style: `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px${f.comb && f.maxLength > 0 ? `;--cells:${f.maxLength}` : ''}`,
       },
         h('span.field-tag', {}, tag || TYPE_LABEL[f.type]),
         tabIdx >= 0 ? h('span.tab-badge', {}, String(tabIdx + 1)) : null,
@@ -426,7 +427,7 @@ export class Viewer {
 
   private autoName(type: FieldType, pageId: string): string {
     if (type === 'radio' && this.lastRadio && this.lastRadio.pageId === pageId && store.fields.some((f) => f.name === this.lastRadio!.name && f.type === 'radio')) return this.lastRadio.name;
-    const base = { text: 'TextField', area: 'TextArea', check: 'Checkbox', radio: 'Choice', reset: 'Reset' }[type];
+    const base = { text: 'TextField', area: 'TextArea', check: 'Checkbox', radio: 'Choice', dropdown: 'Dropdown', reset: 'Reset' }[type];
     let n = 1;
     while (store.fields.some((f) => f.name === `${base}_${n}`)) n++;
     return `${base}_${n}`;

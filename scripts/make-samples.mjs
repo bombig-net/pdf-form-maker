@@ -1,6 +1,7 @@
 // Generates sample PDFs that mimic a typical layout export:
 //  - sample-layers.pdf: placeholders as PDF layers (optional content groups) named [Form_TYPE_Name]
 //  - sample-tags.pdf:   placeholders with text tags [Form_TYPE_Name] inside rectangles
+//  - sample-plain.pdf:  an ordinary form without any tags (for automatic field suggestions)
 import { PDFDocument, StandardFonts, rgb, PDFName, PDFOperator, PDFHexString } from 'pdf-lib';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
@@ -114,5 +115,42 @@ async function tags() {
   writeFileSync(`${out}/sample-tags.pdf`, await doc.save());
 }
 
+async function plain() {
+  const doc = await PDFDocument.create();
+  const reg = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const p = doc.addPage([595.28, 841.89]);
+  const label = (t, x, y) => p.drawText(t, { x, y, size: 9, font: bold, color: INK });
+  p.drawText('Contact form', { x: 56, y: 770, size: 24, font: bold, color: ACCENT });
+  // Panel around the inputs (must not become a field)
+  p.drawRectangle({ x: 44, y: 520, width: 507, height: 210, borderColor: LINE, borderWidth: 0.5 });
+  label('Full name', 56, 700); p.drawRectangle({ x: 56, y: 672, width: 230, height: 22, borderColor: LINE, borderWidth: 0.75 });
+  label('Company', 309, 700); p.drawRectangle({ x: 309, y: 672, width: 230, height: 22, borderColor: LINE, borderWidth: 0.75 });
+  label('Email', 56, 650); p.drawRectangle({ x: 56, y: 622, width: 483, height: 22, color: rgb(0.96, 0.96, 0.97) });
+  p.drawText('name@example.com', { x: 62, y: 629, size: 10, font: reg, color: rgb(0.62, 0.62, 0.64) });
+  label('Message', 56, 600); p.drawRectangle({ x: 56, y: 530, width: 483, height: 64, borderColor: LINE, borderWidth: 0.75 });
+  // Checkboxes: drawn squares and a glyph
+  p.drawRectangle({ x: 56, y: 490, width: 11, height: 11, borderColor: INK, borderWidth: 0.75 });
+  p.drawText('Send me the newsletter', { x: 74, y: 492, size: 10, font: reg, color: INK });
+  p.drawRectangle({ x: 250, y: 490, width: 11, height: 11, borderColor: INK, borderWidth: 0.75 });
+  p.drawText('I accept the terms', { x: 268, y: 492, size: 10, font: reg, color: INK });
+  // Underline fields
+  p.drawText('Place, date', { x: 56, y: 440, size: 10, font: reg, color: INK });
+  p.drawLine({ start: { x: 120, y: 438 }, end: { x: 300, y: 438 }, thickness: 0.75, color: INK });
+  p.drawText('Signature', { x: 320, y: 440, size: 10, font: reg, color: INK });
+  p.drawLine({ start: { x: 375, y: 438 }, end: { x: 539, y: 438 }, thickness: 0.75, color: INK });
+  // Underscores in text
+  p.drawText('Reference: ______________________', { x: 56, y: 405, size: 10, font: reg, color: INK });
+  // Heading with an underline (text sits on the line: not a field)
+  p.drawText('Opening hours', { x: 56, y: 360, size: 12, font: bold, color: INK });
+  p.drawLine({ start: { x: 56, y: 357 }, end: { x: 150, y: 357 }, thickness: 0.75, color: INK });
+  // Table grid (must not produce fields)
+  for (let i = 0; i <= 3; i++) p.drawLine({ start: { x: 56, y: 340 - i * 20 }, end: { x: 400, y: 340 - i * 20 }, thickness: 0.5, color: LINE });
+  for (const x of [56, 200, 300, 400]) p.drawLine({ start: { x, y: 340 }, end: { x, y: 280 }, thickness: 0.5, color: LINE });
+  p.drawText('Mon', { x: 62, y: 326, size: 9, font: reg, color: INK }); p.drawText('9-17', { x: 206, y: 326, size: 9, font: reg, color: INK });
+  writeFileSync(`${out}/sample-plain.pdf`, await doc.save());
+}
+
 await layers();
 await tags();
+await plain();

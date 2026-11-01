@@ -21,13 +21,13 @@ const ICON: Record<Op, string> = {
   sameh: svg('<path d="M12 4v16M9 7l3-3 3 3M9 17l3 3 3-3"/>'),
 };
 const LABEL: Record<Op, string> = {
-  left: 'Links ausrichten', hcenter: 'Horizontal zentrieren', right: 'Rechts ausrichten',
-  top: 'Oben ausrichten', vcenter: 'Vertikal zentrieren', bottom: 'Unten ausrichten',
-  hdist: 'Horizontal gleichmäßig verteilen', vdist: 'Vertikal gleichmäßig verteilen',
-  samew: 'Gleiche Breite wie zuletzt gewähltes Feld', sameh: 'Gleiche Höhe wie zuletzt gewähltes Feld',
+  left: 'Align left', hcenter: 'Align horizontal centers', right: 'Align right',
+  top: 'Align top', vcenter: 'Align vertical centers', bottom: 'Align bottom',
+  hdist: 'Distribute horizontally', vdist: 'Distribute vertically',
+  samew: 'Match width of the last selected field', sameh: 'Match height of the last selected field',
 };
 
-/** Ausrichten/Verteilen in Bildschirm-Richtung, je Seite getrennt. */
+/** Align/distribute in screen direction, separately per page. */
 export function arrange(viewer: Viewer, op: Op) {
   const sel = store.selectedFields;
   if (sel.length < 2) return;
@@ -84,7 +84,7 @@ export function deleteSelected() {
   store.setSelection([]);
 }
 
-/** Panel für die Mehrfachauswahl (ersetzt das Eigenschaften-Panel, solange mehrere Felder gewählt sind). */
+/** Panel for multi-selection (replaces the properties panel while several fields are selected). */
 export function mountMultiPanel(inspector: HTMLElement, viewer: Viewer) {
   const panel = h('div.panel.side-panel.multi-panel');
   inspector.prepend(panel);
@@ -111,7 +111,7 @@ export function mountMultiPanel(inspector: HTMLElement, viewer: Viewer) {
     };
 
     const size = h<HTMLInputElement>('input', {
-      type: 'number', min: 0, step: 0.5, inputmode: 'decimal', placeholder: sizes.size > 1 ? 'gemischt' : 'auto',
+      type: 'number', min: 0, step: 0.5, inputmode: 'decimal', placeholder: sizes.size > 1 ? 'mixed' : 'auto',
       value: sizes.size === 1 && [...sizes][0] ? String([...sizes][0]) : '',
       oninput: (e: Event) => { const v = parseFloat((e.target as HTMLInputElement).value.replace(',', '.')); setAll((f) => { if (f.type !== 'check' && f.type !== 'radio') f.fontSize = isNaN(v) ? 0 : Math.max(0, Math.min(144, v)); }); },
     });
@@ -119,21 +119,21 @@ export function mountMultiPanel(inspector: HTMLElement, viewer: Viewer) {
     const req = h<HTMLInputElement>('input', { type: 'checkbox', role: 'switch', id: 'multi-req', checked: allReq, onchange: (e: Event) => setAll((f) => { if (f.type !== 'reset') f.required = (e.target as HTMLInputElement).checked; }) });
 
     const del = h('button.btn.danger', { type: 'button', onclick: deleteSelected });
-    del.innerHTML = `${svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', 16)}<span>${sel.length} Felder löschen</span>`;
+    del.innerHTML = `${svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', 16)}<span>Delete ${sel.length} fields</span>`;
 
     panel.replaceChildren(...([
-      h('div.panel-head', {}, h('h2.panel-title', {}, `${sel.length} Felder ausgewählt`),
-        (() => { const c = h('button.icon-btn', { type: 'button', 'aria-label': 'Auswahl aufheben', title: 'Auswahl aufheben', onclick: () => store.select(null) }); c.innerHTML = svg('<path d="M6 6l12 12M18 6L6 18"/>'); return c; })()),
-      pages > 1 ? h('p.hint', {}, 'Die Auswahl liegt auf mehreren Seiten. Ausrichten wirkt je Seite.') : null,
-      h('h3.section-title', {}, 'Ausrichten'),
+      h('div.panel-head', {}, h('h2.panel-title', {}, `${sel.length} fields selected`),
+        (() => { const c = h('button.icon-btn', { type: 'button', 'aria-label': 'Clear selection', title: 'Clear selection', onclick: () => store.select(null) }); c.innerHTML = svg('<path d="M6 6l12 12M18 6L6 18"/>'); return c; })()),
+      pages > 1 ? h('p.hint', {}, 'The selection spans several pages. Alignment applies per page.') : null,
+      h('h3.section-title', {}, 'Align'),
       h('div.arrange-row', {}, btn('left'), btn('hcenter'), btn('right'), h('span.sep'), btn('top'), btn('vcenter'), btn('bottom')),
-      h('h3.section-title', {}, 'Verteilen und angleichen'),
+      h('h3.section-title', {}, 'Distribute and match'),
       h('div.arrange-row', {}, btn('hdist', sel.length < 3), btn('vdist', sel.length < 3), h('span.sep'), btn('samew'), btn('sameh')),
-      h('h3.section-title', {}, 'Gemeinsame Eigenschaften'),
-      texty.length ? h('div.row', {}, h('label', {}, 'Schriftgröße'), h('div.row-control', {}, size, h('span.suffix', {}, 'pt'))) : null,
-      h('div.row', {}, h('label', {}, 'Farbe'), h('div.row-control', {}, color)),
-      h('div.toggle-row', {}, req, h('label', { for: 'multi-req' }, 'Pflichtfeld')),
-      h('p.hint', {}, 'Shift-Klick fügt Felder hinzu oder entfernt sie. Pfeiltasten verschieben die ganze Auswahl.'),
+      h('h3.section-title', {}, 'Shared properties'),
+      texty.length ? h('div.row', {}, h('label', {}, 'Font size'), h('div.row-control', {}, size, h('span.suffix', {}, 'pt'))) : null,
+      h('div.row', {}, h('label', {}, 'Color'), h('div.row-control', {}, color)),
+      h('div.toggle-row', {}, req, h('label', { for: 'multi-req' }, 'Required')),
+      h('p.hint', {}, 'Shift-click adds or removes fields. Arrow keys move the whole selection.'),
       h('div.panel-actions', {}, del)].filter(Boolean) as Node[]));
   };
   store.subscribe((k) => { if (k.has('selection') || k.has('mode') || k.has('doc') || (k.has('fields') && !panel.contains(document.activeElement))) render(); });

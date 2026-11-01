@@ -1,11 +1,14 @@
 import type { CustomFont, Field, FieldType, PageRef, SourceDoc } from './types';
 import type { PDFDocumentProxy } from './pdf/pdfjs';
+import { DEFAULT_LOCALE } from './util/locale';
 
 export type Tool = 'select' | FieldType;
 export type ChangeKind = 'doc' | 'pages' | 'fields' | 'selection' | 'tool' | 'zoom' | 'options' | 'history' | 'mode';
 
 export interface Options {
   hidePlaceholderLayers: boolean;
+  /** Regional formats for date, number and postal code fields. */
+  locale: string;
   showTabOrder: boolean;
   snap: boolean;
 }
@@ -27,7 +30,7 @@ class Store {
   tool: Tool = 'select';
   zoom = 1;
   fileName = '';
-  options: Options = { hidePlaceholderLayers: false, showTabOrder: false, snap: true };
+  options: Options = { hidePlaceholderLayers: false, showTabOrder: false, snap: true, locale: DEFAULT_LOCALE };
 
   private listeners = new Set<(kinds: Set<ChangeKind>) => void>();
   private pending = new Set<ChangeKind>();
@@ -138,6 +141,7 @@ class Store {
     this.selectedId = null; this.selection = new Set(); this.testMode = false;
     this.tool = 'select'; this.undoStack = []; this.redoStack = [];
     this.fileName = '';
+    this.options.locale = DEFAULT_LOCALE;
     this.emit('doc', 'pages', 'fields', 'selection', 'history', 'mode');
   }
 }

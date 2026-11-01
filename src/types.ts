@@ -107,4 +107,6 @@ export interface CustomFont { id: string; name: string; bytes: Uint8Array }
 
 export interface ExportOptions {
   hidePlaceholderLayers: boolean;
+  /** Regional formats (see util/locale.ts); default Europe. */
+  locale?: string;
 }

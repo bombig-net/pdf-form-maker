@@ -1,4 +1,4 @@
-import { store } from '../state';
+import { store, DEFAULT_PADDING } from '../state';
 import type { Field, FormFont, RGB } from '../types';
 
 const sameColor = (a: RGB, b: RGB) => a.every((v, i) => Math.abs(v - b[i]) < 0.002);
@@ -42,6 +42,7 @@ export function formFontFromFields(fields: Field[]): FormFont {
     bold: false,
     italic: false,
     color: [...color] as RGB,
+    padding: DEFAULT_PADDING,
   };
 }
 

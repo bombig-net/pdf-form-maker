@@ -64,6 +64,8 @@ export interface FormFont {
   bold: boolean;
   italic: boolean;
   color: RGB;
+  /** Extra inner padding of text fields and dropdowns in pt (applies in both modes). */
+  padding?: number;
 }
 
 export interface PageRef {
@@ -134,4 +136,6 @@ export interface ExportOptions {
   hidePlaceholderLayers: boolean;
   /** Regional formats (see util/locale.ts); default Europe. */
   locale?: string;
+  /** Extra inner padding of text fields and dropdowns in pt (the field area is inset by it). */
+  padding?: number;
 }

@@ -118,6 +118,8 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       btn.tabIndex = +tab;
       btn.addEventListener('click', () => {
         if (f.buttonAction === 'email') { toast(`In Acrobat this opens an email to ${f.mailTo || '(no address)'} with the filled form attached.`); return; }
+        if (f.buttonAction === 'print') { toast('In Acrobat this opens the print dialog.'); return; }
+        if (f.buttonAction === 'save') { toast('In Acrobat this opens \u201cSave As\u201d, so the filled form can be saved as a PDF.'); return; }
         values.clear(); store.emit('mode');
       });
       box.append(btn);

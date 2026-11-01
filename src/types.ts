@@ -1,4 +1,4 @@
-export type FieldType = 'text' | 'area' | 'check' | 'radio' | 'reset';
+export type FieldType = 'text' | 'area' | 'check' | 'radio' | 'dropdown' | 'reset';
 export type FormatKind = 'none' | 'email' | 'date' | 'phone' | 'number' | 'zip';
 export type Align = 'left' | 'center' | 'right';
 export type RGB = [number, number, number];
@@ -39,6 +39,10 @@ export interface Field {
   source: 'layer' | 'tag' | 'manual' | 'import';
   /** Additional areas whose text is hidden on export (e.g. the tag text itself). */
   extraHide: Rect[];
+  /** Options of a dropdown field. */
+  choices?: string[];
+  /** Text field split into one box per character (needs a max. length). */
+  comb?: boolean;
 }
 
 export interface PageRef {

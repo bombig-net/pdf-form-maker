@@ -12,7 +12,7 @@ export function copySelection(): boolean {
   if (!sel.length) return false;
   clip = structuredClone(sel);
   pasteCount = 0;
-  toast(`${sel.length} ${sel.length === 1 ? 'Feld' : 'Felder'} kopiert.`, 'info', 1800);
+  toast(`${sel.length} ${sel.length === 1 ? 'field' : 'fields'} copied.`, 'info', 1800);
   return true;
 }
 
@@ -24,7 +24,7 @@ export function cutSelection(): boolean {
   return true;
 }
 
-/** Fügt auf der aktuell sichtbaren Seite ein. Auf derselben Seite leicht versetzt, auf anderen Seiten an gleicher Position. */
+/** Pastes onto the currently visible page. Slightly offset on the same page, same position on other pages. */
 export function paste(viewer: Viewer): boolean {
   if (!clip.length) return false;
   const target = viewer.currentPageId();

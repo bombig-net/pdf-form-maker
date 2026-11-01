@@ -1,7 +1,7 @@
 import '@fontsource-variable/inter/wght.css';
 import './styles.css';
 import './features.css';
-import './theme.css';
+import './home.css';
 import { store, type Tool } from './state';
 import { h, icons, isTyping, svg, toast } from './ui/dom';
 import { Viewer } from './ui/viewer';
@@ -109,7 +109,7 @@ function buildEditor(): HTMLElement {
 
   const title = h('span.doc-title');
   const bar = h('header.bar', {},
-    h('div.bar-left', {}, back, h('span.mark.small', { 'aria-hidden': 'true' }, h('span.ink.c'), h('span.ink.m'), h('span.ink.y'), h('span.ink.k')), title),
+    h('div.bar-left', {}, back, h('span.logo-mark', { 'aria-hidden': 'true' }), title),
     tools,
     h('div.bar-right', {}, pagesToggle, undo, redo, h('span.sep'), zoomOut, zoomLabel, zoomIn, h('span.sep'), propsToggle, testBtn, exportBtn),
     mergeIn);

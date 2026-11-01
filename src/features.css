@@ -112,3 +112,13 @@ textarea.choices {
 }
 textarea.choices:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .insert-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+
+/* ---------- Calculations and visibility ---------- */
+.calc-list { display: grid; gap: 2px; max-height: 160px; overflow-y: auto; margin: 0 0 8px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+.calc-item { display: flex; align-items: center; gap: 8px; padding: 3px 4px; border-radius: 4px; font-size: 13px; cursor: pointer; }
+.calc-item:hover { background: var(--panel-2); }
+.calc-item input { accent-color: var(--brand); margin: 0; }
+.formula-error:empty { display: none; }
+.formula-error { color: var(--danger); margin-top: -4px; }
+.test-field input.calc { background: color-mix(in srgb, var(--brand) 10%, transparent); cursor: default; }
+.test-field[hidden] { display: none; }

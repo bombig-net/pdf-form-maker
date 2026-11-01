@@ -10,6 +10,7 @@ import { parseTag } from './detect';
 import { effectiveColor } from '../util/color';
 import { sortForTabOrder } from '../util/tabOrder';
 import { locale, type LocaleFormat } from '../util/locale';
+import { calcScript, conditionScripts, mailScript } from './logic';
 
 export interface ExportInput {
   docs: SourceDoc[];
@@ -275,6 +276,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
   const noStyle = { textColor: undefined, backgroundColor: undefined, borderColor: undefined, borderWidth: 0 };
 
   let fieldCount = 0;
+  const calcRefs: PDFRef[] = [];
   for (const [name, group] of groups) {
     const f0 = group[0];
     const color = effectiveColor(f0);
@@ -304,7 +306,10 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         }
         finalizeDA(tf.acroField, `/${res} ${f0.fontSize || 0} Tf ${fmtColor(color)} rg`);
         setTooltip(tf.acroField.dict, f0.tooltip);
-        setActions(base, tf.acroField.dict, buildScripts(f0, color, locale(options.locale)));
+        const scripts: Record<string, string | undefined> = buildScripts(f0, color, locale(options.locale));
+        const calc = calcScript(f0);
+        if (calc) { scripts.C = calc; tf.enableReadOnly(); calcRefs.push(tf.acroField.ref); }
+        setActions(base, tf.acroField.dict, scripts);
       } else if (f0.type === 'dropdown') {
         const dd = form.createDropdown(name);
         const { font, res } = await getFont(f0);
@@ -356,7 +361,11 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
           });
           finalizeDA(btn.acroField, `/${res} ${f.fontSize || 0} Tf ${fmtColor(effectiveColor({ ...f, bgColor: f.buttonBg }))} rg`);
           const ws = btn.acroField.getWidgets();
-          ws[ws.length - 1].dict.set(N('A'), base.context.obj({ S: 'ResetForm' }));
+          const hideAll = placed.filter((x) => x.showIf?.field).map((x) => `this.getField(${JSON.stringify(sanitizeName(x.name))}).display = display.hidden;`).join('\n');
+          const action = f.buttonAction === 'email'
+            ? base.context.obj({ S: 'JavaScript', JS: PDFHexString.fromText(mailScript(f.mailTo ?? '', f.mailSubject ?? '')) })
+            : base.context.obj(hideAll ? { S: 'ResetForm', Next: base.context.obj({ S: 'JavaScript', JS: PDFHexString.fromText(hideAll) }) } : { S: 'ResetForm' });
+          ws[ws.length - 1].dict.set(N('A'), action);
           setTooltip(btn.acroField.dict, f.tooltip || f.label);
           fieldCount++;
         }
@@ -366,6 +375,37 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
     } catch (e) {
       warnings.push(`Field “${name}” could not be created: ${(e as Error).message}`);
     }
+  }
+
+  // Calculation order: in the order the fields were created
+  if (calcRefs.length) form.acroForm.dict.set(N('CO'), base.context.obj(calcRefs));
+
+  // Conditional visibility: dependents start hidden, controllers show/hide them
+  for (const f of placed) {
+    if (!f.showIf?.field) continue;
+    try {
+      for (const w of form.getField(sanitizeName(f.name)).acroField.getWidgets()) {
+        const fl = w.dict.get(N('F'));
+        w.dict.set(N('F'), PDFNumber.of((fl instanceof PDFNumber ? fl.asNumber() : 4) | 2));
+      }
+    } catch { /* field was renamed or not created */ }
+  }
+  for (const [ctrl, { kind, js }] of conditionScripts(placed)) {
+    try {
+      const field = form.getField(sanitizeName(ctrl));
+      const action = base.context.obj({ Type: 'Action', S: 'JavaScript', JS: PDFHexString.fromText(js) });
+      if (kind === 'dropdown') {
+        const aa = base.context.obj({}) as PDFDict;
+        aa.set(N('V'), action);
+        field.acroField.dict.set(N('AA'), aa);
+      } else {
+        for (const w of field.acroField.getWidgets()) {
+          const aa = base.context.obj({}) as PDFDict;
+          aa.set(N('U'), action);
+          w.dict.set(N('AA'), aa);
+        }
+      }
+    } catch { warnings.push(`The visibility rule for \u201c${ctrl}\u201d could not be added.`); }
   }
 
   // 5) Tab order: sort widgets on each page from top left to bottom right
@@ -424,7 +464,7 @@ function setCaption(field: PDFCheckBox | PDFRadioGroup, ch: string) {
   }
 }
 
-function setActions(doc: PDFDocument, dict: PDFDict, scripts: { K?: string; F?: string; V?: string }) {
+function setActions(doc: PDFDocument, dict: PDFDict, scripts: Record<string, string | undefined>) {
   const entries = Object.entries(scripts).filter(([, v]) => v);
   if (!entries.length) return;
   const aa = doc.context.obj({}) as PDFDict;

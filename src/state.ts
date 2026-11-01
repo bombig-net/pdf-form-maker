@@ -2,7 +2,7 @@ import type { CustomFont, Field, FieldType, PageRef, SourceDoc } from './types';
 import type { PDFDocumentProxy } from './pdf/pdfjs';
 
 export type Tool = 'select' | FieldType;
-export type ChangeKind = 'doc' | 'pages' | 'fields' | 'selection' | 'tool' | 'zoom' | 'options' | 'history';
+export type ChangeKind = 'doc' | 'pages' | 'fields' | 'selection' | 'tool' | 'zoom' | 'options' | 'history' | 'mode';
 
 export interface Options {
   hidePlaceholderLayers: boolean;
@@ -18,7 +18,12 @@ class Store {
   pages: PageRef[] = [];
   fields: Field[] = [];
   customFonts: CustomFont[] = [];
+  /** Primär ausgewähltes Feld (zeigt das Eigenschaften-Panel). */
   selectedId: string | null = null;
+  /** Alle ausgewählten Felder (Mehrfachauswahl), enthält selectedId. */
+  selection = new Set<string>();
+  /** Testmodus: Formular in der App ausfüllen. */
+  testMode = false;
   tool: Tool = 'select';
   zoom = 1;
   fileName = '';
@@ -48,6 +53,11 @@ class Store {
 
   get hasDocument() { return this.docs.length > 0; }
   get selected(): Field | undefined { return this.fields.find((f) => f.id === this.selectedId); }
+  /** Ausgewählte Felder, die noch existieren. */
+  get selectedFields(): Field[] {
+    if (this.selectedId && !this.selection.has(this.selectedId)) this.selection.add(this.selectedId);
+    return this.fields.filter((f) => this.selection.has(f.id));
+  }
   page(id: string) { return this.pages.find((p) => p.id === id); }
   analysis(p: PageRef) { return this.docs.find((d) => d.id === p.docId)!.pages[p.srcIndex]; }
   pageNumber(pageId: string) { return this.pages.findIndex((p) => p.id === pageId) + 1; }
@@ -91,15 +101,33 @@ class Store {
   private restore(s: Snapshot) {
     this.pages = s.pages; this.fields = s.fields;
     if (this.selectedId && !this.fields.some((f) => f.id === this.selectedId)) this.selectedId = null;
+    this.selection = new Set([...this.selection].filter((id) => this.fields.some((f) => f.id === id)));
     this.coalesceKey = '';
     this.emit('pages', 'fields', 'selection', 'history');
   }
 
   select(id: string | null) {
-    if (this.selectedId === id) return;
+    if (this.selectedId === id && this.selection.size <= 1) return;
     this.selectedId = id;
+    this.selection = new Set(id ? [id] : []);
     this.coalesceKey = '';
     this.emit('selection');
+  }
+  /** Mehrere Felder auswählen; das letzte wird primär. */
+  setSelection(ids: string[]) {
+    this.selection = new Set(ids);
+    this.selectedId = ids.length ? ids[ids.length - 1] : null;
+    this.coalesceKey = '';
+    this.emit('selection');
+  }
+  toggleSelect(id: string) {
+    const ids = this.selectedFields.map((f) => f.id);
+    this.setSelection(ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+  }
+  setTestMode(on: boolean) {
+    this.testMode = on;
+    if (on) { this.tool = 'select'; this.setSelection([]); }
+    this.emit('mode', 'tool');
   }
   setTool(t: Tool) { this.tool = t; this.emit('tool'); }
   setZoom(z: number) { this.zoom = Math.min(4, Math.max(0.25, z)); this.emit('zoom'); }
@@ -107,9 +135,10 @@ class Store {
   reset() {
     this.proxies.forEach((p) => p.destroy());
     this.docs = []; this.proxies.clear(); this.pages = []; this.fields = [];
-    this.selectedId = null; this.tool = 'select'; this.undoStack = []; this.redoStack = [];
+    this.selectedId = null; this.selection = new Set(); this.testMode = false;
+    this.tool = 'select'; this.undoStack = []; this.redoStack = [];
     this.fileName = '';
-    this.emit('doc', 'pages', 'fields', 'selection', 'history');
+    this.emit('doc', 'pages', 'fields', 'selection', 'history', 'mode');
   }
 }
 

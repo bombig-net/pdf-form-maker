@@ -7,11 +7,11 @@ import { bboxToRect, rectContainsPoint, uid } from '../util/geom';
 
 export interface ParsedTag { type: Exclude<FieldType, 'reset'>; name: string; radioValue: string }
 
-const TYPE_MAP: Record<string, ParsedTag['type']> = { text: 'text', check: 'check', checkbox: 'check', radio: 'radio', area: 'area', textarea: 'area' };
+const TYPE_MAP: Record<string, ParsedTag['type']> = { text: 'text', check: 'check', checkbox: 'check', radio: 'radio', area: 'area', textarea: 'area', dropdown: 'dropdown', select: 'dropdown' };
 
 /** Recognizes "[Form_TYPE_Name]" (brackets optional, e.g. in layer names). */
 export function parseTag(raw: string): ParsedTag | null {
-  const m = /^\s*\[?\s*Form_(Text|Checkbox|Check|Radio|Textarea|Area)_(.+?)\s*\]?\s*$/i.exec(raw);
+  const m = /^\s*\[?\s*Form_(Text|Checkbox|Check|Radio|Textarea|Area|Dropdown|Select)_(.+?)\s*\]?\s*$/i.exec(raw);
   if (!m) return null;
   return buildTag(m[1], m[2]);
 }
@@ -26,7 +26,7 @@ function buildTag(kind: string, rest: string): ParsedTag | null {
   }
   return { type, name: clean, radioValue: '' };
 }
-const TAG_IN_TEXT = /\[\s*Form_(Text|Checkbox|Check|Radio|Textarea|Area)_([^\]\s][^\]]*?)\s*\]/gi;
+const TAG_IN_TEXT = /\[\s*Form_(Text|Checkbox|Check|Radio|Textarea|Area|Dropdown|Select)_([^\]\s][^\]]*?)\s*\]/gi;
 
 /* ------------------------------------------------------------------ */
 /* Field factory                                                       */
@@ -43,6 +43,8 @@ export function newField(type: FieldType, pageId: string, rect: Rect, name = '')
     label: type === 'reset' ? 'Reset form' : '',
     buttonBg: [0.92, 0.92, 0.92],
     source: 'manual', extraHide: [],
+    choices: type === 'dropdown' ? ['Option 1', 'Option 2', 'Option 3'] : [],
+    comb: false,
   };
 }
 

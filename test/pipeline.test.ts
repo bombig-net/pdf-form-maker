@@ -276,3 +276,33 @@ describe('Calculations, conditions and buttons', () => {
     expect((btn.lookup(PDFName.of('JS')) as { decodeText(): string }).decodeText()).toContain('mailDoc');
   });
 });
+
+describe('Field suggestions without tags', () => {
+  it('finds boxes, checkboxes, underlines and underscores, but no panels, headings or tables', async () => {
+    const { doc } = await analyzeDocument(load('sample-plain.pdf'), 'sample-plain.pdf');
+    const a = doc.pages[0];
+    expect(detectPageFields(a, 'p0')).toHaveLength(0);
+    const { suggestFields } = await import('../src/pdf/suggest');
+    const s = suggestFields(a, 'p0');
+    const summary = s.map((f) => `${f.type}:${f.tooltip}`).sort();
+    expect(summary).toEqual([
+      'area:Message',
+      'check:I accept the terms',
+      'check:Send me the newsletter',
+      'text:Company',
+      'text:Email',
+      'text:Full name',
+      'text:Place, date',
+      'text:Reference',
+      'text:Signature',
+    ]);
+    const email = s.find((f) => f.tooltip === 'Email')!;
+    expect(email.placeholder).toBe('name@example.com');
+    expect(email.hideText).toBe(true);
+    const ref = s.find((f) => f.tooltip === 'Reference')!;
+    expect(ref.placeholder).toBe('');
+    expect(ref.hideText).toBe(false);
+    // Nothing is suggested twice
+    expect(suggestFields(a, 'p0', s)).toHaveLength(0);
+  });
+});

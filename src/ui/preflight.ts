@@ -34,6 +34,8 @@ export function runChecks(): Issue[] {
     if ((f.type === 'text' || f.type === 'area') && f.fontSize > 0 && f.fontSize < 6) issues.push({ level: 'warn', text: `“${label(f)}” uses a very small font (${f.fontSize} pt).`, fields: [f] });
     if (f.type === 'text' && f.fontSize > 0 && f.fontSize > f.rect.h * 0.9) issues.push({ level: 'warn', text: `The font in “${label(f)}” is taller than the field.`, fields: [f] });
     if (!f.name.trim() && f.type !== 'reset') issues.push({ level: 'warn', text: 'A field has no name.', fields: [f] });
+    if (f.type === 'dropdown' && !(f.choices ?? []).some((c) => c.trim())) issues.push({ level: 'warn', text: `The dropdown \u201c${label(f)}\u201d has no options.`, fields: [f] });
+    if (f.comb && f.type === 'text' && !(f.maxLength > 0)) issues.push({ level: 'warn', text: `\u201c${label(f)}\u201d is set to comb but has no max. length, so it stays a normal text field.`, fields: [f] });
     if (f.maxLength > 0 && f.placeholder.length > f.maxLength) issues.push({ level: 'info', text: `The placeholder of “${label(f)}” is longer than the allowed ${f.maxLength} characters and will be cut off.`, fields: [f] });
   }
   // Names

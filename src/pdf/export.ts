@@ -272,6 +272,14 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
       default: return { x: r.x, y: r.y, width: r.w, height: r.h };
     }
   };
+  // Inner padding: the field area is inset so the text keeps some distance from the printed frame
+  const pad = Math.max(0, options.padding ?? 0);
+  const inset = (r: Rect, vertical: boolean): Rect => {
+    let { x, y, w, h } = r;
+    if (pad && w > pad * 2 + 6) { x += pad; w -= pad * 2; }
+    if (pad && vertical && h > pad * 2 + 6) { y += pad; h -= pad * 2; }
+    return { x, y, w, h };
+  };
   const fmtColor = (c: RGB) => c.map((v) => +Math.min(1, Math.max(0, v)).toFixed(3)).join(' ');
   const noStyle = { textColor: undefined, backgroundColor: undefined, borderColor: undefined, borderWidth: 0 };
 
@@ -293,7 +301,9 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         if (f0.format !== 'none' && f0.type === 'text') tf.disableRichFormatting();
         for (const f of group) {
           const rot = pageRot.get(f.pageId)!;
-          tf.addToPage(pageObj.get(f.pageId)!, { ...rectOpts(f.rect, rot), ...noStyle, font, rotate: degrees(rot) });
+          // Comb fields keep their exact size, so the boxes still match the layout
+          const r = f0.comb && f0.type === 'text' && f0.maxLength > 0 ? f.rect : inset(f.rect, f0.type === 'area');
+          tf.addToPage(pageObj.get(f.pageId)!, { ...rectOpts(r, rot), ...noStyle, font, rotate: degrees(rot) });
         }
         // Placeholder as ghost text in the appearance (for viewers without JavaScript)
         const ph = f0.placeholder ? cleanForFont(font, f0.type === 'area' ? f0.placeholder : f0.placeholder.replace(/\s*\n\s*/g, ' ')) : '';
@@ -318,7 +328,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         if (f0.required) dd.enableRequired();
         for (const f of group) {
           const rot = pageRot.get(f.pageId)!;
-          dd.addToPage(pageObj.get(f.pageId)!, { ...rectOpts(f.rect, rot), ...noStyle, font, rotate: degrees(rot) });
+          dd.addToPage(pageObj.get(f.pageId)!, { ...rectOpts(inset(f.rect, false), rot), ...noStyle, font, rotate: degrees(rot) });
         }
         finalizeDA(dd.acroField, `/${res} ${f0.fontSize || 0} Tf ${fmtColor(color)} rg`);
         setTooltip(dd.acroField.dict, f0.tooltip);

@@ -92,6 +92,8 @@ export function suggestFields(a: PageAnalysis, pageId: string, existing: Field[]
     // Underscores, dots and glyphs are the visual line or box: keep them, no placeholder
     if (/^[_.\s\u2026\u2610\u25A1\u274F\u25A2]*$/.test(f.placeholder)) { f.placeholder = ''; f.hideText = false; }
     if (c.type === 'check') f.hideText = false;
+    // A line labeled Signature (or Unterschrift, Signatur, Firma) is meant for signing
+    if (f.type === 'text' && /signature|signatur|unterschrift|firma/i.test(f.tooltip)) { f.type = 'signature'; f.placeholder = ''; }
     if (f.type === 'text' && f.fontSize > f.rect.h * 0.8) f.fontSize = Math.max(6, Math.floor(f.rect.h * 0.65));
     out.push(f);
   }

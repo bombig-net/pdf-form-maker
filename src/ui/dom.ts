@@ -34,6 +34,8 @@ export const icons = {
   dropdown: svg('<rect x="3" y="7" width="18" height="10" rx="1.5"/><path d="M14 11l2 2 2-2"/>'),
   // Button tool (type 'reset' = button with an action): a button with a mouse pointer
   reset: svg('<rect x="2.5" y="5" width="16" height="10" rx="5"/><path d="M14 12l0 9 2.4-2.3 1.7 3.4 1.7-.8-1.7-3.3h3.3z" fill="currentColor" stroke-width="1"/>'),
+  // Signature: a signed line
+  signature: svg('<path d="M3 19h18"/><path d="M4 14c1.6-3.5 3.2-6 4.6-6 1.9 0-.6 6.5 1.4 6.5 1.6 0 2.4-3 3.8-3 1.2 0 .9 2 2.2 2 .9 0 1.6-.6 2.5-1.4"/>'),
   undo: svg('<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>'),
   redo: svg('<path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>'),
   minus: svg('<path d="M5 12h14"/>'),

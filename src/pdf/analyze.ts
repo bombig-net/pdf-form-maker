@@ -46,6 +46,7 @@ export async function analyzeDocument(bytes: Uint8Array, name: string): Promise<
         let kind: ExistingWidget['kind'] = 'other';
         if (ft === 'Tx') kind = an.multiLine ? 'area' : 'text';
         else if (ft === 'Btn') kind = an.checkBox ? 'check' : an.radioButton ? 'radio' : 'button';
+        else if (ft === 'Sig') kind = 'signature';
         const r = an.rect as number[];
         widgets.push({
           name: String(an.fieldName), kind,

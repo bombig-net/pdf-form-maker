@@ -1,17 +1,20 @@
 import type { Field, FieldType, PageAnalysis, Rect, RGB, TextOpRecord, TextItemLite } from '../types';
 import { bboxToRect, rectContainsPoint, uid } from '../util/geom';
+import { BUTTON_ACTIONS, type ButtonAction } from './logic';
 
 /* ------------------------------------------------------------------ */
 /* Naming convention                                                   */
 /* ------------------------------------------------------------------ */
 
-export interface ParsedTag { type: Exclude<FieldType, 'reset'>; name: string; radioValue: string }
+export interface ParsedTag { type: FieldType; name: string; radioValue: string; buttonAction?: ButtonAction; label?: string }
 
-const TYPE_MAP: Record<string, ParsedTag['type']> = { text: 'text', check: 'check', checkbox: 'check', radio: 'radio', area: 'area', textarea: 'area', dropdown: 'dropdown', select: 'dropdown' };
+const TYPE_MAP: Record<string, ParsedTag['type']> = { text: 'text', check: 'check', checkbox: 'check', radio: 'radio', area: 'area', textarea: 'area', dropdown: 'dropdown', select: 'dropdown', signature: 'signature', sign: 'signature', button: 'reset' };
+/** Button tags: [Form_Button_Send], [Form_Button_Print_Print this form] (action, then an optional caption). */
+const BUTTON_WORDS: Record<string, ButtonAction> = { send: 'email', email: 'email', mail: 'email', submit: 'email', reset: 'reset', clear: 'reset', print: 'print', save: 'save' };
 
 /** Recognizes "[Form_TYPE_Name]" (brackets optional, e.g. in layer names). */
 export function parseTag(raw: string): ParsedTag | null {
-  const m = /^\s*\[?\s*Form_(Text|Checkbox|Check|Radio|Textarea|Area|Dropdown|Select)_(.+?)\s*\]?\s*$/i.exec(raw);
+  const m = /^\s*\[?\s*Form_(Text|Checkbox|Check|Radio|Textarea|Area|Dropdown|Select|Signature|Sign|Button)_(.+?)\s*\]?\s*$/i.exec(raw);
   if (!m) return null;
   return buildTag(m[1], m[2]);
 }
@@ -19,6 +22,14 @@ function buildTag(kind: string, rest: string): ParsedTag | null {
   const type = TYPE_MAP[kind.toLowerCase()];
   const clean = rest.trim().replace(/\s+/g, '_');
   if (!type || !clean) return null;
+  if (type === 'reset') {
+    // Action first, then an optional caption: Send, Print_Print this form, Save_Keep a copy
+    const [word, ...rest] = clean.split('_');
+    const action = BUTTON_WORDS[word.toLowerCase()];
+    if (!action) return { type, name: `Button_${clean}`, radioValue: '', buttonAction: 'reset', label: clean.replace(/_/g, ' ') };
+    const caption = rest.join(' ').trim();
+    return { type, name: `Button_${word}`, radioValue: '', buttonAction: action, label: caption || BUTTON_ACTIONS[action].caption };
+  }
   if (type === 'radio') {
     const i = clean.indexOf('_');
     if (i > 0 && i < clean.length - 1) return { type, name: clean.slice(0, i), radioValue: clean.slice(i + 1) };
@@ -26,7 +37,7 @@ function buildTag(kind: string, rest: string): ParsedTag | null {
   }
   return { type, name: clean, radioValue: '' };
 }
-const TAG_IN_TEXT = /\[\s*Form_(Text|Checkbox|Check|Radio|Textarea|Area|Dropdown|Select)_([^\]\s][^\]]*?)\s*\]/gi;
+const TAG_IN_TEXT = /\[\s*Form_(Text|Checkbox|Check|Radio|Textarea|Area|Dropdown|Select|Signature|Sign|Button)_([^\]\s][^\]]*?)\s*\]/gi;
 
 /* ------------------------------------------------------------------ */
 /* Field factory                                                       */
@@ -133,6 +144,7 @@ export function detectPageFields(a: PageAnalysis, pageId: string): Field[] {
     merged.forEach((rect, idx) => {
       const f = newField(tag.type, pageId, rect, tag.name);
       f.radioValue = tag.radioValue || (tag.type === 'radio' ? `Option${idx + 1}` : '');
+      if (tag.type === 'reset') { f.buttonAction = tag.buttonAction; f.label = tag.label ?? f.label; }
       f.source = 'layer';
       out.push(f);
     });
@@ -167,9 +179,12 @@ export function detectPageFields(a: PageAnalysis, pageId: string): Field[] {
         if (!rect) { const s = Math.max(8, box.h * 0.9); rect = { x: box.x, y: midY - s / 2, w: s, h: s }; }
       } else {
         rect = smallestPath(a, (r) => rectContainsPoint(r, startX, midY, 0.5) && r.w > box.w * 0.5, pageArea) ?? { ...box };
+        // A signature tag on a plain line: give the field room to sign above it
+        if (tag.type === 'signature' && rect.h < 20) rect = { x: rect.x, y: rect.y, w: Math.max(rect.w, 140), h: 26 };
       }
       const f = newField(tag.type, pageId, rect, tag.name);
       f.radioValue = tag.radioValue;
+      if (tag.type === 'reset') { f.buttonAction = tag.buttonAction; f.label = tag.label ?? f.label; }
       f.source = 'tag';
       f.extraHide.push(box);
       out.push(f);
@@ -179,7 +194,7 @@ export function detectPageFields(a: PageAnalysis, pageId: string): Field[] {
   // 3) Keep existing form fields
   for (const w of a.widgets) {
     if (w.kind === 'other') continue;
-    const type: FieldType = w.kind === 'button' ? 'reset' : w.kind;
+    const type: FieldType = w.kind === 'button' ? 'reset' : w.kind === 'signature' ? 'signature' : w.kind;
     if (w.kind === 'button') continue; // don't import buttons (actions unknown)
     const rect = bboxToRect(w.rect);
     if (out.some((f) => f.name === w.name && overlap(f.rect, rect) > area(rect) * 0.5)) continue;
@@ -267,7 +282,7 @@ export function enrichField(f: Field, a: PageAnalysis, lines: Line[], tagBoxes: 
     const mf = mapFont(src.baseFont);
     // Labels are often bold – inputs only take over font family, size and color.
     f.fontFamily = mf.family; f.bold = fromLabel ? false : mf.bold; f.italic = fromLabel ? false : mf.italic;
-    if (f.type === 'text' || f.type === 'area') {
+    if (f.type === 'text' || f.type === 'area' || f.type === 'reset') {
       let size = Math.round(src.size * 2) / 2;
       if (f.type === 'text' && size > r.h * 0.85) size = Math.max(4, Math.floor(r.h * 0.75 * 2) / 2);
       f.fontSize = Math.min(72, Math.max(4, size));
@@ -286,6 +301,8 @@ export function enrichField(f: Field, a: PageAnalysis, lines: Line[], tagBoxes: 
     if (cx >= b[0] && cx <= b[2] && cy >= b[1] && cy <= b[3]) bg = p.fill;
   }
   f.bgColor = bg;
+  // Button tags: the box drawn in the layout gives the button its color
+  if (f.type === 'reset' && f.source !== 'manual' && f.source !== 'import') f.buttonBg = [...bg] as RGB;
 
   // Tooltip from the label
   const label = nearestLabelText(lines, r, tagBoxes);

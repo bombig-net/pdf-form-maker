@@ -1,4 +1,4 @@
-export type FieldType = 'text' | 'area' | 'check' | 'radio' | 'dropdown' | 'reset';
+export type FieldType = 'text' | 'area' | 'check' | 'radio' | 'dropdown' | 'reset' | 'signature';
 export type FormatKind = 'none' | 'email' | 'date' | 'phone' | 'number' | 'zip';
 export type Align = 'left' | 'center' | 'right';
 export type RGB = [number, number, number];
@@ -104,7 +104,7 @@ export interface TextItemLite { str: string; x: number; y: number; w: number; h:
 
 export interface ExistingWidget {
   name: string;
-  kind: 'text' | 'area' | 'check' | 'radio' | 'button' | 'other';
+  kind: 'text' | 'area' | 'check' | 'radio' | 'button' | 'signature' | 'other';
   rect: [number, number, number, number];
   value?: string;
   required?: boolean;
@@ -138,4 +138,8 @@ export interface ExportOptions {
   locale?: string;
   /** Extra inner padding of text fields and dropdowns in pt (the field area is inset by it). */
   padding?: number;
+  /** Values to fill in, by field name (text, dropdown, radio value, checkbox true/false), e.g. from test mode. */
+  values?: Record<string, string | boolean>;
+  /** Bake the fields into the page: the PDF can be printed and archived but no longer edited. */
+  flatten?: boolean;
 }

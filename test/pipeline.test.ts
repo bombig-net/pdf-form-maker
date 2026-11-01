@@ -212,3 +212,25 @@ describe('Regional formats', () => {
     expect(buildScripts(f, [0, 0, 0], locale('us')).V).toContain('[0-9]{5}(-[0-9]{4})?');
   });
 });
+
+describe('Dropdown and comb fields', () => {
+  it('recognizes dropdown tags', () => {
+    expect(parseTag('[Form_Dropdown_Country]')).toMatchObject({ type: 'dropdown', name: 'Country' });
+    expect(parseTag('[Form_Select_Size]')).toMatchObject({ type: 'dropdown', name: 'Size' });
+  });
+  it('exports dropdowns with options and comb text fields', async () => {
+    const { doc, pages, fields } = await prepare('sample-tags.pdf');
+    const { newField } = await import('../src/pdf/detect');
+    const dd = newField('dropdown', 'p0', { x: 300, y: 700, w: 150, h: 20 }, 'Country');
+    dd.choices = ['Germany', 'Austria', '', 'Switzerland', 'Austria'];
+    const comb = fields.find((f) => f.name === 'CustomerNumber')!;
+    comb.comb = true; comb.maxLength = 8;
+    const res = await exportPdf({ docs: [doc], pages, fields: [...fields, dd], customFonts: [], options: { hidePlaceholderLayers: false } });
+    expect(res.warnings).toEqual([]);
+    const form = (await PDFDocument.load(res.bytes)).getForm();
+    expect(form.getDropdown('Country').getOptions()).toEqual(['Germany', 'Austria', 'Switzerland']);
+    const tf = form.getTextField('CustomerNumber');
+    expect(tf.isCombed()).toBe(true);
+    expect(tf.getMaxLength()).toBe(8);
+  });
+});

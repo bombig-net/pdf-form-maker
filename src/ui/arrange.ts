@@ -113,9 +113,9 @@ export function mountMultiPanel(inspector: HTMLElement, viewer: Viewer) {
     const size = h<HTMLInputElement>('input', {
       type: 'number', min: 0, step: 0.5, inputmode: 'decimal', placeholder: sizes.size > 1 ? 'mixed' : 'auto',
       value: sizes.size === 1 && [...sizes][0] ? String([...sizes][0]) : '',
-      oninput: (e: Event) => { const v = parseFloat((e.target as HTMLInputElement).value.replace(',', '.')); setAll((f) => { if (f.type !== 'check' && f.type !== 'radio') f.fontSize = isNaN(v) ? 0 : Math.max(0, Math.min(144, v)); }); },
+      oninput: (e: Event) => { const v = parseFloat((e.target as HTMLInputElement).value.replace(',', '.')); setAll((f) => { if (f.type !== 'check' && f.type !== 'radio') { f.fontSize = isNaN(v) ? 0 : Math.max(0, Math.min(144, v)); f.fontLocked = true; } }); },
     });
-    const color = h<HTMLInputElement>('input', { type: 'color', value: colors.size === 1 ? [...colors][0] : '#000000', oninput: (e: Event) => setAll((f) => (f.color = fromHex((e.target as HTMLInputElement).value))) });
+    const color = h<HTMLInputElement>('input', { type: 'color', value: colors.size === 1 ? [...colors][0] : '#000000', oninput: (e: Event) => setAll((f) => { f.color = fromHex((e.target as HTMLInputElement).value); f.fontLocked = true; }) });
     const req = h<HTMLInputElement>('input', { type: 'checkbox', role: 'switch', id: 'multi-req', checked: allReq, onchange: (e: Event) => setAll((f) => { if (f.type !== 'reset') f.required = (e.target as HTMLInputElement).checked; }) });
 
     const del = h('button.btn.danger', { type: 'button', onclick: deleteSelected });

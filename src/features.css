@@ -136,7 +136,7 @@ textarea.choices:focus { outline: none; border-color: var(--accent); box-shadow:
 .formula-error { color: var(--danger); margin-top: -4px; }
 .test-field input.calc { background: color-mix(in srgb, var(--brand) 10%, transparent); cursor: default; }
 .test-field.cond-hidden > * { visibility: hidden; }
-.test-cover { position: absolute; pointer-events: none; }
+.tag-cover { position: absolute; pointer-events: none; }
 
 /* ---------- Logic badges and comb boxes on rotated pages ---------- */
 .logic-badges { position: absolute; right: 0; bottom: 0; transform: translate(35%, 55%); display: flex; gap: 2px; z-index: 1; pointer-events: none; }
@@ -168,3 +168,30 @@ textarea.choices:focus { outline: none; border-color: var(--accent); box-shadow:
 .acc-body > .segmented { margin-bottom: 10px; }
 .block-label { display: block; margin: 4px 0 6px; color: var(--ink-2); font-size: 13px; }
 .row-control > input[type='color'] { flex: none; }
+
+/* ---------- Field preview in the editor: content as in the PDF ---------- */
+.viewer.preview .field { background: color-mix(in srgb, var(--c) 7%, transparent); }
+.viewer.preview .field:hover { background: color-mix(in srgb, var(--c) 13%, transparent); }
+.viewer.preview .field.selected { background: color-mix(in srgb, var(--c) 12%, transparent); }
+.viewer.preview .field.comb { background-image: none; }
+.fp { position: absolute; inset: 1px; display: flex; align-items: center; overflow: hidden; pointer-events: none; container-type: size; }
+.field.selected .fp { inset: 2px; }
+.fp.cov { background: linear-gradient(color-mix(in srgb, var(--c) 7%, transparent), color-mix(in srgb, var(--c) 7%, transparent)), var(--cover); }
+.fp-text { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1.2; }
+.fp-text.multi { align-self: stretch; white-space: pre-wrap; overflow-wrap: anywhere; text-overflow: clip; }
+.fp-text.calc { font-style: italic; }
+.fp-text.dd { padding-right: 18px !important; }
+.fp-comb { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(var(--cells), 1fr); }
+.fp-comb span { display: grid; place-items: center; overflow: hidden; line-height: 1; border-right: 1px solid color-mix(in srgb, var(--c) 45%, transparent); }
+.fp-comb span:last-child { border-right: 0; }
+.fp.btn { inset: 0; justify-content: center; border-radius: 2px; }
+.field.selected .fp.btn { inset: 0; }
+.fp-btn { min-width: 0; padding: 0 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1.2; }
+.fp-mark { display: grid; place-items: center; width: 100%; height: 100%; opacity: 0.35; font: 700 78cqh/1 system-ui, sans-serif; }
+.fp-mark.dot::after { content: ''; width: 46cqmin; height: 46cqmin; border-radius: 50%; background: var(--mark); }
+.field[data-type='radio'] .fp { border-radius: 50%; }
+.field[data-type='dropdown']::before, .field.required::after { z-index: 1; }
+/* Conditional fields start hidden in the PDF: dashed frame, content dimmed */
+.viewer.preview .field.cond:not(.selected) { box-shadow: none; outline: 1.5px dashed color-mix(in srgb, var(--c) 85%, transparent); outline-offset: -1.5px; }
+.viewer.preview .field.cond .fp > * { opacity: 0.55; }
+.preview-toggle[aria-pressed='true'] { color: var(--accent); }

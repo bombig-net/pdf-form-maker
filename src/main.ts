@@ -95,6 +95,14 @@ function buildEditor(): HTMLElement {
 
   const doExport = async () => { if (store.testMode) store.setTestMode(false); if (await preflight(viewer)) await runExport(exportBtn); };
   const exportBtn = h<HTMLButtonElement>('button.btn.primary.export', { type: 'button', onclick: doExport });
+  // Preview of the field content (placeholder, buttons, marks) as in the PDF
+  const togglePreview = () => {
+    store.options.preview = !store.options.preview;
+    try { localStorage.setItem('pfm-preview', store.options.preview ? '1' : '0'); } catch { /* ignore */ }
+    store.emit('options');
+  };
+  const previewBtn = h<HTMLButtonElement>('button.icon-btn.preview-toggle', { type: 'button', title: 'Preview field content (P)', 'aria-label': 'Preview field content', 'aria-pressed': String(store.options.preview), onclick: togglePreview });
+  previewBtn.innerHTML = svg('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>');
   const testBtn = h<HTMLButtonElement>('button.btn.secondary.test-toggle', { type: 'button', 'aria-pressed': 'false', title: 'Fill in the form inside the app (Ctrl/⌘ E)', onclick: () => { store.setTestMode(!store.testMode); if (store.testMode) { inspEl.classList.add('open'); railEl.classList.remove('open'); } } });
   testBtn.innerHTML = `${svg('<path d="M7 5l12 7-12 7z"/>')}<span>Test</span>`;
   exportBtn.innerHTML = `${icons.download}<span>Export PDF</span>`;
@@ -112,7 +120,7 @@ function buildEditor(): HTMLElement {
   const bar = h('header.bar', {},
     h('div.bar-left', {}, back, h('span.logo-mark', { 'aria-hidden': 'true' }), title),
     tools,
-    h('div.bar-right', {}, pagesToggle, undo, redo, h('span.sep'), zoomOut, zoomLabel, zoomIn, h('span.sep'), propsToggle, testBtn, exportBtn),
+    h('div.bar-right', {}, pagesToggle, undo, redo, h('span.sep'), zoomOut, zoomLabel, zoomIn, h('span.sep'), previewBtn, propsToggle, testBtn, exportBtn),
     mergeIn);
 
   const editor = h('div.editor', {}, bar, railEl, viewerEl, inspEl);
@@ -122,6 +130,7 @@ function buildEditor(): HTMLElement {
     if (k.has('tool')) tools.querySelectorAll<HTMLElement>('.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === store.tool)));
     if (k.has('zoom') || k.has('doc')) zoomLabel.textContent = `${Math.round(store.zoom * 100)} %`;
     if (k.has('history') || k.has('doc')) { undo.disabled = !store.canUndo; redo.disabled = !store.canRedo; }
+    if (k.has('options') || k.has('doc')) previewBtn.setAttribute('aria-pressed', String(store.options.preview));
     if (k.has('doc')) { title.textContent = store.fileName; title.title = store.fileName; }
     if (k.has('mode') || k.has('doc')) {
       editor.classList.toggle('testing', store.testMode);
@@ -165,6 +174,7 @@ function buildEditor(): HTMLElement {
       if (d) viewer.nudge(store.selectedFields.map((f) => f.id), d[0], d[1]);
       return;
     }
+    if (e.key.toLowerCase() === 'p') { togglePreview(); return; }
     const tool = TOOLS.find((t) => t.key.toLowerCase() === e.key.toLowerCase());
     if (tool) store.setTool(tool.t);
   });

@@ -5,6 +5,7 @@ import { pageSize, rectToScreen, screenToRect, toScreen, type ViewGeom } from '.
 import { newField, enrichField, buildLines } from '../pdf/detect';
 import { sortForTabOrder } from '../util/tabOrder';
 import { renderTestOverlay } from './testmode';
+import { fieldLook, outsideCovers, previewContent } from './fieldlook';
 
 export const BASE_SCALE = 96 / 72;
 const SNAP_PX = 6;
@@ -76,6 +77,7 @@ export class Viewer {
     else if (k.has('zoom')) this.layout();
     else if (k.has('fields') || k.has('options') || k.has('mode') || k.has('selection')) this.drawAllOverlays();
     if (k.has('tool') || k.has('mode')) { this.el.dataset.tool = store.tool; this.el.classList.toggle('testing', store.testMode); }
+    if (k.has('options') || k.has('doc')) this.el.classList.toggle('preview', store.options.preview);
   }
 
   geom(p: PageRef): ViewGeom {
@@ -166,6 +168,7 @@ export class Viewer {
     const single = store.selectedFields.length === 1;
     const order = store.options.showTabOrder ? sortForTabOrder(fields.filter((f) => f.type !== 'reset'), (f) => f.rect, g.rotation) : [];
     v.overlay.replaceChildren();
+    const preview = store.options.preview;
     for (const f of fields) {
       const r = rectToScreen(g, f.rect);
       const tabIdx = order.indexOf(f);
@@ -186,6 +189,12 @@ export class Viewer {
       if (f.calc) el.title = 'Calculated field';
       if (f.showIf?.field) el.title = `Visible only if ${f.showIf.field} ${f.showIf.value ? `= ${f.showIf.value}` : 'is checked'}`;
       if (f.required) el.classList.add('required');
+      if (f.showIf?.field) el.classList.add('cond');
+      // Preview: the field shows its content as in the PDF (placeholder, button, mark), template text underneath is covered
+      if (preview) {
+        el.prepend(previewContent(f, fieldLook(f, g)));
+        v.overlay.prepend(...outsideCovers(f, g));
+      }
       if (store.selection.has(f.id)) this.decorateSelected(el, single);
       v.overlay.append(el);
     }

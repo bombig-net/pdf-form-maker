@@ -2,19 +2,14 @@ import { store } from '../state';
 import type { Field } from '../types';
 import { h, toast } from './dom';
 import { rectToScreen, type ViewGeom } from '../util/geom';
-import { effectiveColor, toHex } from '../util/color';
+import { toHex } from '../util/color';
 import { sortForTabOrder } from '../util/tabOrder';
 import { locale, datePattern, normalizeDate, parseNumber } from '../util/locale';
 import { computeCalc, conditionMet } from '../pdf/logic';
+import { fieldLook, outsideCovers } from './fieldlook';
 
 /** Test mode input values, keyed by field name (fields with the same name share a value). */
 const values = new Map<string, string | boolean>();
-
-const FONT_STACK: Record<string, string> = {
-  Helvetica: 'Helvetica, Arial, sans-serif',
-  Times: '"Times New Roman", Times, serif',
-  Courier: '"Courier New", Courier, monospace',
-};
 
 /** Tab order across all pages (same as in the export). */
 function tabIndexMap(): Map<string, number> {
@@ -33,15 +28,11 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
   const tabs = tabIndexMap();
   for (const f of fields) {
     const r = rectToScreen(g, f.rect);
-    // Cover text that is hidden on export here as well (background color of the template)
-    // Checkboxes and radios keep the printed box or circle visible; tag text next to them is covered separately
-    const mark = f.type === 'check' || f.type === 'radio';
-    const cover = (f.hideText || (f.extraHide.length && !mark)) && f.bgColor ? `;--cover:${toHex(f.bgColor)}` : '';
+    // Same look as in the editor preview: font, color, padding, cover for hidden template text
+    const look = fieldLook(f, g);
+    const cover = look.cover ? `;--cover:${look.cover}` : '';
     const box = h('div.test-field', { 'data-type': f.type, 'data-fid': f.id, class: cover ? 'covered' : undefined, style: `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px${cover}` });
-    const color = toHex(f.type === 'reset' ? effectiveColor({ ...f, bgColor: f.buttonBg }) : effectiveColor(f));
-    const autoSize = f.type === 'area' ? 10 * g.scale : Math.min(r.height * 0.62, 14 * g.scale);
-    const size = f.fontSize ? f.fontSize * g.scale : autoSize;
-    const font = `${f.italic ? 'italic ' : ''}${f.bold ? '700 ' : '400 '}${size}px ${FONT_STACK[f.fontFamily] ?? FONT_STACK.Helvetica}`;
+    const { color, font, padPx } = look;
     const tab = String(tabs.get(f.id) ?? 0);
     const label = f.tooltip || f.name;
 
@@ -59,7 +50,6 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       if (f.calc) { el.readOnly = true; el.classList.add('calc'); }
       Object.assign(el.style, { font, color, textAlign: f.align });
       // Same inner distance as in Acrobat: its own margin of about 2 pt plus the form padding
-      const padPx = (2 + (store.options.formFont.padding ?? 0)) * g.scale;
       el.style.padding = f.type === 'area' ? `${padPx}px` : `0 ${padPx}px`;
       if (f.type === 'text' && f.comb && f.maxLength > 0) {
         // One box per character: a grid of real cells shows the characters, the input underneath takes the typing.
@@ -97,7 +87,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       el.dataset.fname = f.name;
       el.setAttribute('aria-label', label);
       if (f.required) el.required = true;
-      Object.assign(el.style, { font, color, paddingLeft: `${(2 + (store.options.formFont.padding ?? 0)) * g.scale}px` });
+      Object.assign(el.style, { font, color, paddingLeft: `${padPx}px` });
       el.addEventListener('change', () => sync(f.name, el.value, el));
       box.append(el);
     } else if (f.type === 'check' || f.type === 'radio') {
@@ -126,13 +116,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
     }
     overlay.append(box);
     // Tag text outside the field (e.g. next to a checkbox) is hidden on export, so cover it here too
-    if (f.bgColor) for (const x of f.extraHide) {
-      const inside = x.x >= f.rect.x && x.y >= f.rect.y && x.x + x.w <= f.rect.x + f.rect.w && x.y + x.h <= f.rect.y + f.rect.h;
-      if (inside) continue;
-      // 1 pt of air: character widths are estimated, so the last glyph would otherwise peek out
-      const c = rectToScreen(g, { x: x.x - 1, y: x.y - 1, w: x.w + 2, h: x.h + 2 });
-      overlay.prepend(h('div.test-cover', { 'aria-hidden': 'true', style: `left:${c.left}px;top:${c.top}px;width:${c.width}px;height:${c.height}px;background:${toHex(f.bgColor)}` }));
-    }
+    overlay.prepend(...outsideCovers(f, g));
   }
   queueMicrotask(refreshLogic);
 }

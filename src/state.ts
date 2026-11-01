@@ -13,6 +13,8 @@ export interface Options {
   formFont: FormFont;
   showTabOrder: boolean;
   snap: boolean;
+  /** Editor shows the field content (placeholder, buttons, marks) as in the PDF. */
+  preview: boolean;
 }
 
 interface Snapshot { pages: PageRef[]; fields: Field[] }
@@ -32,7 +34,7 @@ class Store {
   tool: Tool = 'select';
   zoom = 1;
   fileName = '';
-  options: Options = { hidePlaceholderLayers: false, showTabOrder: false, snap: true, locale: DEFAULT_LOCALE, formFont: defaultFormFont() };
+  options: Options = { hidePlaceholderLayers: false, showTabOrder: false, snap: true, locale: DEFAULT_LOCALE, formFont: defaultFormFont(), preview: previewPref() };
 
   private listeners = new Set<(kinds: Set<ChangeKind>) => void>();
   private pending = new Set<ChangeKind>();
@@ -147,6 +149,11 @@ class Store {
     this.options.formFont = defaultFormFont();
     this.emit('doc', 'pages', 'fields', 'selection', 'history', 'mode');
   }
+}
+
+/** Field preview in the editor is on unless the user turned it off. */
+function previewPref(): boolean {
+  try { return localStorage.getItem('pfm-preview') !== '0'; } catch { return true; }
 }
 
 /** Extra inner padding of text fields in pt, on top of the small margin PDF readers keep anyway. */

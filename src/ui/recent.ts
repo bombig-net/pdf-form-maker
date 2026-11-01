@@ -3,6 +3,7 @@ import { analyzeDocument } from '../pdf/analyze';
 import type { CustomFont, Field, PageRef } from '../types';
 import { uid } from '../util/geom';
 import { toast } from './dom';
+import { saveFile } from './actions';
 
 /** A saved project: source PDFs plus the full editing state. Stored only in this browser (IndexedDB). */
 export interface Project {
@@ -130,6 +131,11 @@ export async function openProject(id: string): Promise<boolean> {
   let p: Project | undefined;
   try { p = await tx<Project | undefined>('readonly', (s) => s.get(id)); } catch { /* ignore */ }
   if (!p) { toast('This project is no longer available.', 'error'); return false; }
+  return restore(p);
+}
+
+/** Loads a project into the editor. Projects from a file get a new id so they appear as their own entry. */
+async function restore(p: Project): Promise<boolean> {
   suspended = true;
   try {
     const idMap = new Map<string, string>();
@@ -156,5 +162,72 @@ export async function openProject(id: string): Promise<boolean> {
     return false;
   } finally {
     setTimeout(() => (suspended = false), 0);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Project file: everything in one file to back up or pass on          */
+/* ------------------------------------------------------------------ */
+
+const FORMAT = 'pdf-form-maker';
+export const PROJECT_EXT = '.formmaker';
+
+function toBase64(bytes: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function fromBase64(b64: string): Uint8Array {
+  const s = atob(b64);
+  const out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+  return out;
+}
+
+/** Downloads the open form (PDFs, fields, fonts, region) as a .formmaker file. */
+export async function saveProjectFile() {
+  if (!store.hasDocument) return;
+  const data = {
+    format: FORMAT,
+    version: 1,
+    name: store.fileName || 'Untitled',
+    savedAt: new Date().toISOString(),
+    locale: store.options.locale,
+    docs: store.docs.map((d) => ({ id: d.id, name: d.name, data: toBase64(d.bytes) })),
+    pages: store.pages,
+    fields: store.fields,
+    customFonts: store.customFonts.map((f) => ({ id: f.id, name: f.name, data: toBase64(f.bytes) })),
+  };
+  const bytes = new TextEncoder().encode(JSON.stringify(data));
+  const saved = await saveFile(`${data.name}${PROJECT_EXT}`, bytes, 'application/json');
+  if (saved === 'saved') toast('Project file saved. Open it again from the home screen.');
+}
+
+export const isProjectFile = (name: string) => name.toLowerCase().endsWith(PROJECT_EXT);
+
+/** Opens a .formmaker file. */
+export async function openProjectFile(file: File): Promise<boolean> {
+  try {
+    const d = JSON.parse(await file.text());
+    if (d?.format !== FORMAT || !Array.isArray(d.docs) || !d.docs.length) throw new Error('not a project file');
+    const p: Project = {
+      id: uid('proj'),
+      name: String(d.name || file.name.replace(/\.formmaker$/i, '')),
+      updatedAt: Date.now(),
+      thumb: '',
+      fieldCount: d.fields?.length ?? 0,
+      pageCount: d.pages?.length ?? 0,
+      docs: d.docs.map((x: { id: string; name: string; data: string }) => ({ id: x.id, name: x.name, bytes: fromBase64(x.data) })),
+      pages: d.pages ?? [],
+      fields: d.fields ?? [],
+      customFonts: (d.customFonts ?? []).map((x: { id: string; name: string; data: string }) => ({ id: x.id, name: x.name, bytes: fromBase64(x.data) })),
+      locale: d.locale,
+    };
+    const ok = await restore(p);
+    if (ok) setTimeout(() => { void flushSave(); }, 0);
+    return ok;
+  } catch {
+    toast(`\u201c${file.name}\u201d is not a valid project file.`, 'error', 6000);
+    return false;
   }
 }

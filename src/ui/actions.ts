@@ -5,6 +5,7 @@ import { exportPdf } from '../pdf/export';
 import { uid } from '../util/geom';
 import { h, toast } from './dom';
 import type { Field, PageRef } from '../types';
+import { formFontFromFields } from './formfont';
 
 export interface InputFile { name: string; bytes: Uint8Array }
 
@@ -52,6 +53,8 @@ export async function openPdfs(files: InputFile[], mode: 'replace' | 'append'): 
     store.reset();
     store.fileName = files[0].name.replace(/\.pdf$/i, '');
     apply();
+    // One font for the whole form, taken from the most common font and size in the layout
+    store.options.formFont = formFontFromFields(newFields);
     store.emit('doc', 'pages', 'fields', 'selection');
   } else {
     store.commit(apply, ['pages', 'fields']);

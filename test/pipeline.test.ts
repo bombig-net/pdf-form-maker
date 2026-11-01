@@ -180,3 +180,35 @@ describe('Performance', () => {
     expect(ms).toBeLessThan(3000);
   });
 });
+
+describe('Regional formats', () => {
+  it('parses and normalizes dates per region', async () => {
+    const { locale, normalizeDate } = await import('../src/util/locale');
+    expect(normalizeDate('1.2.26', locale('eu'))).toBe('01.02.2026');
+    expect(normalizeDate('31/12/2026', locale('uk'))).toBe('31/12/2026');
+    expect(normalizeDate('12/31/2026', locale('us'))).toBe('12/31/2026');
+    expect(normalizeDate('31/12/2026', locale('us'))).toBeNull();
+    expect(normalizeDate('30.02.2026', locale('eu'))).toBeNull();
+  });
+  it('parses numbers per region', async () => {
+    const { locale, parseNumber } = await import('../src/util/locale');
+    expect(parseNumber('1.234,56', locale('eu'))).toBeCloseTo(1234.56);
+    expect(parseNumber("1'234.56", locale('ch'))).toBeCloseTo(1234.56);
+    expect(parseNumber('1,234.56', locale('us'))).toBeCloseTo(1234.56);
+    expect(parseNumber('abc', locale('eu'))).toBeNaN();
+  });
+  it('writes region-specific Acrobat scripts, Europe by default', async () => {
+    const { buildScripts } = await import('../src/pdf/export');
+    const { newField } = await import('../src/pdf/detect');
+    const { locale } = await import('../src/util/locale');
+    const f = newField('text', 'p', { x: 0, y: 0, w: 100, h: 20 }, 'X');
+    f.format = 'date';
+    expect(buildScripts(f, [0, 0, 0]).K).toContain('dd.mm.yyyy');
+    expect(buildScripts(f, [0, 0, 0], locale('us')).K).toContain('mm/dd/yyyy');
+    f.format = 'number';
+    expect(buildScripts(f, [0, 0, 0]).K).toContain('AFNumber_Keystroke(2, 2,');
+    expect(buildScripts(f, [0, 0, 0], locale('uk')).K).toContain('AFNumber_Keystroke(2, 0,');
+    f.format = 'zip';
+    expect(buildScripts(f, [0, 0, 0], locale('us')).V).toContain('[0-9]{5}(-[0-9]{4})?');
+  });
+});

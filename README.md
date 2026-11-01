@@ -39,7 +39,13 @@ Bereits vorhandene Formularfelder werden übernommen. Ein exportiertes Formular 
 - **Zurücksetzen-Button** als eigener Feldtyp.
 - **Seitenverwaltung:** drehen, umsortieren (ziehen), löschen, weitere PDFs anhängen.
 - **Gleichnamige Felder auf mehreren Seiten:** Abfrage, ob sie synchronisiert (ein Feld mit mehreren Widgets) oder getrennt (Suffix `_S1`, `_S2` …) werden sollen.
-- **Touch:** Pinch-to-Zoom und große Griffe auf dem iPad; Strg/⌘ + Mausrad oder Trackpad am Desktop.
+- **Mehrfachauswahl:** Shift-Klick oder Auswahlrahmen; gemeinsam verschieben, ausrichten, gleichmäßig verteilen, Breite/Höhe angleichen und Eigenschaften setzen.
+- **Kopieren und Einfügen** von Feldern (⌘/Strg C/V), auch auf andere Seiten.
+- **Feldnamen aus Beschriftungen:** Ein gezeichnetes Feld neben „Vorname“ heißt automatisch `Vorname`.
+- **Testmodus** (⌘/Strg E): Formular direkt in der App ausfüllen, inklusive Tab-Reihenfolge, Ghost-Text, Formatprüfung und synchronisierter Felder.
+- **Preflight vor dem Export:** Hinweise auf überlappende Felder, Felder am Seitenrand, sehr kleine Schrift, Namenskonflikte und Radio-Gruppen mit nur einer Option.
+- **Hilfe ohne Treffer:** Werden keine Platzhalter gefunden, erklärt die App die wahrscheinliche Ursache.
+- **Touch:** Pinch-to-Zoom und große Griffe auf dem iPad, Eigenschaften als Bottom Sheet auf dem Telefon; Strg/⌘ + Mausrad oder Trackpad am Desktop.
 
 ## Grenzen und technische Hinweise
 

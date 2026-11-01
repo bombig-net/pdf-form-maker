@@ -93,7 +93,7 @@ export class Inspector {
 
     wrap.append(h('h3.section-title', {}, 'Kurzbefehle'));
     wrap.append(h('dl.shortcuts', {},
-      ...[['V', 'Auswählen'], ['T / A', 'Textfeld / Textbereich'], ['C / R', 'Checkbox / Radio'], ['Entf', 'Feld löschen'], ['Pfeile', 'Feld verschieben (⇧ = 10 pt)'], ['⌘/Strg Z', 'Rückgängig'], ['⌘/Strg D', 'Feld duplizieren']]
+      ...[['V', 'Auswählen'], ['T / A', 'Textfeld / Textbereich'], ['C / R', 'Checkbox / Radio'], ['⇧ Klick', 'Mehrere Felder auswählen'], ['Ziehen', 'Auswahlrahmen auf leerer Fläche'], ['Entf', 'Auswahl löschen'], ['Pfeile', 'Verschieben (⇧ = 10 pt)'], ['⌘/Strg C / V', 'Kopieren und einfügen'], ['⌘/Strg A', 'Alle Felder der Seite'], ['⌘/Strg D', 'Feld duplizieren'], ['⌘/Strg Z', 'Rückgängig'], ['⌘/Strg E', 'Formular testen']]
         .flatMap(([k, v]) => [h('dt', {}, h('kbd', {}, k)), h('dd', {}, v)])));
     return wrap;
   }

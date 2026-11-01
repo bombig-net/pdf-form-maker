@@ -10,7 +10,7 @@ const I = {
   upload: svg('<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>', 22),
   trash: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', 15),
   lock: svg('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', 14),
-  plus: svg('<path d="M12 5v14M5 12h14"/>', 16),
+  check: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 15),
 };
 
 const TAGS: [string, string, string][] = [
@@ -63,10 +63,11 @@ export function buildHome(openSample: () => void): HTMLElement {
     h('div.side-foot', {}, themeSel, (() => { const p = h('p.side-note'); p.innerHTML = `${I.lock}<span>Files stay on your device.</span>`; return p; })()));
 
   // Main
-  const newBtn = h('button.btn.primary', { type: 'button', onclick: pick });
-  newBtn.innerHTML = `${I.plus}<span>New form</span>`;
+  const points = h('ul.hero-points', {}, ...['Nothing is uploaded', 'Works with any layout app', 'Ready for Acrobat Reader'].map((t) => {
+    const li = h('li'); li.innerHTML = `${I.check}<span>${t}</span>`; return li;
+  }));
   const drop = h('button.home-drop', { type: 'button', onclick: pick, 'aria-label': 'Choose a PDF' });
-  drop.innerHTML = `<span class="drop-icon">${I.upload}</span><strong>Drop a PDF to make it fillable</strong><span>or choose a file \u00b7 nothing is uploaded</span>`;
+  drop.innerHTML = `<span class="drop-icon">${I.upload}</span><strong>Drop a PDF to make it fillable</strong><span>or click to choose a file</span>`;
   const recentGrid = h('div.recent-grid');
   const recentCount = h('span.section-meta');
   const guide = h('section.home-guide', { id: 'guide', 'aria-labelledby': 'guide-title' },
@@ -75,7 +76,10 @@ export function buildHome(openSample: () => void): HTMLElement {
     h('div.tag-table', {}, ...TAGS.map(([t, code, desc]) => h('div.tag-row', { 'data-type': t }, h('span.dot'), h('code', {}, code), h('span', {}, desc)))),
     h('p.guide-note', {}, 'Alternatively, put the rectangle on a layer with that name, as long as your app exports layers to the PDF. You can also draw fields directly on the page in the editor.'));
   const main = h('section.home-main', {},
-    h('header.home-head', {}, h('h1', {}, 'Your forms'), newBtn),
+    h('header.home-hero', {},
+      h('h1', {}, 'Make any PDF fillable'),
+      h('p.hero-lead', {}, 'Drop in a PDF from Affinity, InDesign, Canva or Word. Placeholders like [Form_Text_Name] turn into real form fields automatically. Then adjust them, test the form and export it.'),
+      points),
     drop,
     h('section.home-recent', { 'aria-labelledby': 'recent-title' },
       h('div.section-row', {}, h('h2.section-head', { id: 'recent-title' }, 'Recent'), recentCount),

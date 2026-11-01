@@ -47,8 +47,8 @@ export interface Field {
   calc?: { op: 'sum' | 'product' | 'average' | 'min' | 'max' | 'formula'; fields?: string[]; formula?: string };
   /** Only visible if a checkbox is checked (no value) or a radio group/dropdown has this value. */
   showIf?: { field: string; value?: string };
-  /** Button action (type 'reset'): reset the form or send it by email. */
-  buttonAction?: 'reset' | 'email';
+  /** Button action (type 'reset'): reset the form, send it by email, print it or save it as a PDF. */
+  buttonAction?: 'reset' | 'email' | 'print' | 'save';
   mailTo?: string;
   mailSubject?: string;
   /** Field keeps its own font settings instead of the form font. */

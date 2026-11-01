@@ -1,4 +1,4 @@
-// Renders the app icon ("magic fold") to PNG without dependencies (needed for iOS home screen and the web manifest).
+// Renders the app icon (bombig.net bolt on a dark tile) to PNG without dependencies (needed for iOS home screen and the web manifest).
 // The SVG in index.html and src/theme.css uses the same geometry on a 64 × 64 grid.
 import { deflateSync } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -21,13 +21,13 @@ const polygon = (pts) => (px, py) => {
   return inside;
 };
 
+/** The bombig.net bolt, scaled to the 64 × 64 grid (same geometry as the SVG). */
+const BOLT = [[46.19, 31.58], [27.68, 51.6], [26.94, 52.0], [26.11, 51.87], [25.53, 51.27], [25.42, 50.43], [27.84, 38.2], [18.32, 34.59], [17.78, 34.22], [17.49, 33.64], [17.5, 32.99], [17.82, 32.42], [36.33, 12.4], [37.07, 12.0], [37.9, 12.13], [38.48, 12.73], [38.6, 13.57], [36.17, 25.81], [45.69, 29.42], [46.22, 29.79], [46.51, 30.37], [46.5, 31.01], [46.19, 31.58]];
+
 /** Shapes from back to front; `full` = square without rounded corners (iOS rounds the icon itself). */
 const shapes = (full) => [
   [full ? () => true : roundRect(0, 0, 64, 64, 14), hex('#121212')],
-  [polygon([[18, 12], [37, 12], [48, 23], [48, 52], [18, 52]]), hex('#404040')],
-  [polygon([[37, 12], [37, 23], [48, 23]]), hex('#3ecf8e')],
-  [roundRect(23, 30, 20, 7, 2), hex('#3ecf8e')],
-  [roundRect(23, 41, 13, 4, 2), hex('#707070')],
+  [polygon(BOLT), hex('#a7f3d0')],
 ];
 
 function render(size, full) {

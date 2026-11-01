@@ -66,7 +66,7 @@ test('calculates and shows conditional fields in test mode', async ({ page }) =>
   await page.locator('select[name=showIf]').selectOption({ label: 'Only if Newsletter is checked' });
   await expect(page.locator('.field .logic-badge', { hasText: 'if' })).toHaveCount(1);
   await page.keyboard.press('Control+e');
-  const notes = page.locator('.test-field[data-type=area]');
+  const notes = page.locator('.test-field[data-type=area] textarea');
   await expect(notes).toBeHidden();
   await page.locator('[data-fname="Qty"]').fill('3');
   await page.locator('[data-fname="Price"]').fill('12,50');

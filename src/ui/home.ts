@@ -15,13 +15,66 @@ const I = {
   check: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 15),
 };
 
-const TAGS: [string, string, string][] = [
-  ['text', '[Form_Text_Name]', 'Text field'],
-  ['area', '[Form_Area_Message]', 'Multi-line text field'],
-  ['check', '[Form_Check_Terms]', 'Checkbox'],
-  ['radio', '[Form_Radio_Salutation_Ms]', 'Radio button: group, then value'],
-  ['dropdown', '[Form_Dropdown_Country]', 'Dropdown, options are set in the editor'],
+/** Naming guide: each tag as it looks in a layout app, and what it becomes in the exported PDF. */
+interface GuideRow { type: string; code: string; desc: string }
+const GUIDE: GuideRow[] = [
+  { type: 'text', code: '[Form_Text_FirstName]', desc: 'Text field' },
+  { type: 'area', code: '[Form_Area_Message]', desc: 'Multi-line text field' },
+  { type: 'check', code: '[Form_Check_Terms]', desc: 'Checkbox. The tag can sit next to the box.' },
+  { type: 'radio', code: '[Form_Radio_Salutation_Ms]', desc: 'Radio button: group name, then the value' },
+  { type: 'dropdown', code: '[Form_Dropdown_Country]', desc: 'Dropdown. You add the options in the editor.' },
 ];
+
+const handles = () => ['tl', 'tr', 'bl', 'br'].map((p) => h(`span.mini-handle.${p}`));
+const tag = (t: string) => h('span.mini-tag', {}, t);
+const tick = svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 12);
+
+/** Mini artboard: the placeholder as drawn in a layout app (selected, with handles). */
+function layoutMini(r: GuideRow): HTMLElement {
+  const box = (cls: string, ...kids: (Node | string)[]) => h(`div.mini-box${cls}`, {}, ...kids);
+  switch (r.type) {
+    case 'text': return h('div.mini', {}, h('span.mini-label', {}, 'First name'), box('.sel', tag(r.code), ...handles()));
+    case 'area': return h('div.mini', {}, h('span.mini-label', {}, 'Message'), box('.sel.tall', tag(r.code), ...handles()));
+    case 'dropdown': return h('div.mini', {}, h('span.mini-label', {}, 'Country'), box('.sel', tag(r.code), ...handles()));
+    case 'check': return h('div.mini', {}, h('div.mini-line', {}, h('span.mini-square'), h('span', {}, 'I accept the terms'), tag(r.code)));
+    default: return h('div.mini', {},
+      h('div.mini-line', {}, h('span.mini-circle'), h('span.mini-opt', {}, 'Ms'), tag('[Form_Radio_Salutation_Ms]')),
+      h('div.mini-line', {}, h('span.mini-circle'), h('span.mini-opt', {}, 'Mr'), tag('[Form_Radio_Salutation_Mr]')));
+  }
+}
+
+/** Mini artboard: the same spot in the exported PDF, as a filled-in form field. */
+function pdfMini(r: GuideRow): HTMLElement {
+  const field = (cls: string, ...kids: (Node | string)[]) => h(`div.mini-box.mini-field${cls}`, {}, ...kids);
+  const caret = () => h('span.mini-caret');
+  switch (r.type) {
+    case 'text': return h('div.mini', {}, h('span.mini-label', {}, 'First name'), field('', h('span', {}, 'Anna Berg'), caret()));
+    case 'area': return h('div.mini', {}, h('span.mini-label', {}, 'Message'), field('.tall', h('span', {}, 'Looking forward to Friday.'), caret()));
+    case 'dropdown': {
+      const chev = h('span.mini-chev'); chev.innerHTML = svg('<path d="M7 10l5 5 5-5"/>', 12);
+      return h('div.mini', {}, h('span.mini-label', {}, 'Country'), field('.select', h('span', {}, 'Germany'), chev));
+    }
+    case 'check': {
+      const sq = h('span.mini-square.mini-field.on'); sq.innerHTML = tick;
+      return h('div.mini', {}, h('div.mini-line', {}, sq, h('span', {}, 'I accept the terms')));
+    }
+    default: return h('div.mini', {},
+      h('div.mini-line', {}, h('span.mini-circle.mini-field.on'), h('span.mini-opt', {}, 'Ms')),
+      h('div.mini-line', {}, h('span.mini-circle.mini-field'), h('span.mini-opt', {}, 'Mr')));
+  }
+}
+
+/** Short caption shown on phones, where the column headings are hidden. */
+const tagMini = (el: HTMLElement, cap: string) => { el.dataset.cap = cap; return el; };
+
+function guideRow(r: GuideRow): HTMLElement {
+  const arrow = h('span.guide-arrow', { 'aria-hidden': 'true' });
+  arrow.innerHTML = svg('<path d="M5 12h13M13 7l5 5-5 5"/>', 18);
+  return h('div.guide-row', { 'data-type': r.type },
+    h('div.guide-tag', {}, h('span.dot'), h('div', {}, h('code', {}, r.code), h('span.guide-desc', {}, r.desc))),
+    h('figure.guide-pair', { 'aria-label': `${r.desc}: placeholder in the layout and the resulting form field` },
+      tagMini(layoutMini(r), 'Layout'), arrow, tagMini(pdfMini(r), 'PDF')));
+}
 
 type Theme = 'system' | 'light' | 'dark';
 export function applyTheme(t?: Theme) {
@@ -94,8 +147,9 @@ export function buildHome(openSample: () => void): HTMLElement {
   const recentCount = h('span.section-meta');
   const guide = h('section.home-guide', { id: 'guide', 'aria-labelledby': 'guide-title' },
     h('h2.section-head', { id: 'guide-title' }, 'How to name placeholders'),
-    h('p.guide-lead', {}, 'In your layout app, draw a rectangle where the field should go and type one of these tags inside it as text. The tag is removed on export.'),
-    h('div.tag-table', {}, ...TAGS.map(([t, code, desc]) => h('div.tag-row', { 'data-type': t }, h('span.dot'), h('code', {}, code), h('span', {}, desc)))),
+    h('p.guide-lead', {}, 'In your layout app, draw a rectangle where the field should go and type one of these tags inside it as text. On export the tag disappears and the rectangle becomes a real form field.'),
+    h('div.guide-cols', { 'aria-hidden': 'true' }, h('span'), h('div.guide-pair', {}, h('span', {}, 'In your layout app'), h('span'), h('span', {}, 'In the exported PDF'))),
+    h('div.guide-list', {}, ...GUIDE.map(guideRow)),
     h('p.guide-note', {}, 'Alternatively, put the rectangle on a layer with that name, as long as your app exports layers to the PDF. You can also draw fields directly on the page in the editor.'));
   const main = h('section.home-main', {},
     h('header.home-hero', {},

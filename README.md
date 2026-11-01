@@ -23,6 +23,8 @@ There are four ways, and you can combine them freely.
 | `[Form_Check_FieldName]` | Checkbox |
 | `[Form_Radio_Group_Value]` | Radio button; same group = one choice |
 | `[Form_Dropdown_FieldName]` | Dropdown (options are set in the editor) |
+| `[Form_Signature_FieldName]` | Signature field, signed in Acrobat Reader |
+| `[Form_Button_Send]` | Button: `Send` (email), `Print`, `Save` or `Reset`, optionally followed by a caption, e.g. `[Form_Button_Print_Print this form]`. The color of the box drawn around the tag becomes the button color. |
 
 The naming guide on the home screen shows each tag next to the form field it turns into.
 
@@ -42,7 +44,8 @@ Existing form fields are kept, so an exported form can be opened again and edite
 
 **Fields**
 
-- Text fields, text areas, checkboxes, radio groups, **dropdowns** and **buttons** (reset the form, **send it by email** with the filled PDF attached, **print** it or **save it as a PDF**).
+- Text fields, text areas, checkboxes, radio groups, **dropdowns**, **signature fields** and **buttons** (reset the form, **send it by email** with the filled PDF attached, **print** it or **save it as a PDF**).
+- **Default values** and **read-only** fields, e.g. a pre-filled country or a reference number people cannot change.
 - **Comb fields:** one box per character, e.g. for an IBAN or a postal code.
 - **Calculated fields:** sum, product, average, minimum or maximum of other fields, or a formula such as `Quantity * Price * 1.19`.
 - **Conditional fields:** shown only when a checkbox is checked or a radio group or dropdown has a certain value.
@@ -52,11 +55,12 @@ Existing form fields are kept, so an exported form can be opened again and edite
 
 **Editor**
 
+- **Workspace like a layout app:** vertical tool bar, hand tool (H or Space) to move the view, Design/Test switch, sidebar with Pages and Fields, page and zoom controls below the canvas.
 - Draw, move, resize, delete and duplicate fields; undo/redo.
 - **Multi-selection:** shift-click or selection rectangle; move, align, distribute evenly, match width/height and set properties together.
 - **Copy and paste** fields (⌘/Ctrl C/V), also onto other pages.
 - **Field names from labels:** a field drawn next to “First name” is automatically named `First_name`.
-- **Form font:** one font, size and color for all fields, taken from the most common font in the layout when a PDF is opened. Individual fields can get their own settings. Alternatively, “Match layout” gives each field the font, size and color of its label. An adjustable inner padding keeps the text clear of the printed frame. Custom TTF/OTF fonts can be embedded.
+- **Form font:** one font, size and color for all fields, taken from the most common font in the layout when a PDF is opened. Individual fields can get their own settings. Alternatively, “Match layout” gives each field the font, size and color of its label. An adjustable inner padding keeps the text clear of the printed frame. Custom TTF/OTF fonts can be embedded, and in Chrome and Edge any **font installed on the device** can be used. If the layout's font is installed, the app offers it directly.
 - **Live preview in the editor:** fields show their content as in the PDF: placeholders in the form font, comb boxes, dropdown hint, buttons with color and caption, check marks and formulas of calculated fields. Conditional fields have a dashed frame. Press P to switch the preview off and on.
 - **Tidy properties panel:** the essentials are always visible; input, calculation, visibility, font, position and more sit in collapsible sections that show their current setting.
 - **Smart Align:** snapping to the edges of other fields and to lines in the template (hold Alt to bypass snapping).
@@ -68,6 +72,7 @@ Existing form fields are kept, so an exported form can be opened again and edite
 **Checking and saving**
 
 - **Test mode** (⌘/Ctrl E): fill in the form right in the app, including tab order, ghost text, format validation, calculations, conditional fields and synced fields.
+- **Filled-in copies:** download what you typed in test mode as a PDF, still fillable or flattened (no longer editable), and **sign** it beforehand by drawing or typing your signature.
 - **Preflight before export:** warnings about overlapping fields, fields beyond the page edge, very small fonts, name conflicts, invalid formulas, broken visibility rules and more.
 - **Recent forms:** every form you open is saved automatically in your browser (IndexedDB) and appears on the home screen.
 - **Project files** (`.formmaker`): save a form with all fields and settings as one file to back it up or pass it on, and open it again from the home screen.

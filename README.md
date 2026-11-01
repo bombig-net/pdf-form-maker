@@ -57,6 +57,7 @@ Existing form fields are kept, so an exported form can be opened again and edite
 - **Copy and paste** fields (⌘/Ctrl C/V), also onto other pages.
 - **Field names from labels:** a field drawn next to “First name” is automatically named `First_name`.
 - **Form font:** one font, size and color for all fields, taken from the most common font in the layout when a PDF is opened. Individual fields can get their own settings. Alternatively, “Match layout” gives each field the font, size and color of its label. An adjustable inner padding keeps the text clear of the printed frame. Custom TTF/OTF fonts can be embedded.
+- **Live preview in the editor:** fields show their content as in the PDF: placeholders in the form font, comb boxes, dropdown hint, buttons with color and caption, check marks and formulas of calculated fields. Conditional fields have a dashed frame. Press P to switch the preview off and on.
 - **Tidy properties panel:** the essentials are always visible; input, calculation, visibility, font, position and more sit in collapsible sections that show their current setting.
 - **Smart Align:** snapping to the edges of other fields and to lines in the template (hold Alt to bypass snapping).
 - **Automatic tab order** from top left to bottom right, also on rotated pages.

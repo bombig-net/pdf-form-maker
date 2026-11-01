@@ -1,4 +1,4 @@
-import type { CustomFont, Field, FieldType, PageRef, SourceDoc } from './types';
+import type { CustomFont, Field, FieldType, FormFont, PageRef, SourceDoc } from './types';
 import type { PDFDocumentProxy } from './pdf/pdfjs';
 import { DEFAULT_LOCALE } from './util/locale';
 
@@ -9,6 +9,8 @@ export interface Options {
   hidePlaceholderLayers: boolean;
   /** Regional formats for date, number and postal code fields. */
   locale: string;
+  /** Form-wide font settings. */
+  formFont: FormFont;
   showTabOrder: boolean;
   snap: boolean;
 }
@@ -30,7 +32,7 @@ class Store {
   tool: Tool = 'select';
   zoom = 1;
   fileName = '';
-  options: Options = { hidePlaceholderLayers: false, showTabOrder: false, snap: true, locale: DEFAULT_LOCALE };
+  options: Options = { hidePlaceholderLayers: false, showTabOrder: false, snap: true, locale: DEFAULT_LOCALE, formFont: defaultFormFont() };
 
   private listeners = new Set<(kinds: Set<ChangeKind>) => void>();
   private pending = new Set<ChangeKind>();
@@ -142,8 +144,13 @@ class Store {
     this.tool = 'select'; this.undoStack = []; this.redoStack = [];
     this.fileName = '';
     this.options.locale = DEFAULT_LOCALE;
+    this.options.formFont = defaultFormFont();
     this.emit('doc', 'pages', 'fields', 'selection', 'history', 'mode');
   }
+}
+
+export function defaultFormFont(): FormFont {
+  return { mode: 'uniform', family: 'Helvetica', size: 10, bold: false, italic: false, color: [0, 0, 0] };
 }
 
 export const store = new Store();

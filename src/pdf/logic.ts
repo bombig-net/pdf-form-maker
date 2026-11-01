@@ -156,6 +156,25 @@ export function conditionScripts(fields: Field[]): Map<string, { kind: Field['ty
 /* Buttons                                                             */
 /* ------------------------------------------------------------------ */
 
+/** Default caption of a button for each action. */
+export const BUTTON_ACTIONS = {
+  reset: { label: 'Reset the form', caption: 'Reset form' },
+  email: { label: 'Send by email', caption: 'Send form' },
+  print: { label: 'Print', caption: 'Print form' },
+  save: { label: 'Save as PDF', caption: 'Save PDF' },
+} as const;
+export type ButtonAction = keyof typeof BUTTON_ACTIONS;
+
+/** JavaScript of a button action, or '' for reset (which uses a ResetForm action instead). */
+export function buttonScript(action: ButtonAction | undefined, to = '', subject = ''): string {
+  switch (action) {
+    case 'email': return mailScript(to, subject);
+    case 'print': return 'this.print({ bUI: true, bSilent: false, bShrinkToFit: true });';
+    case 'save': return 'app.execMenuItem("SaveAs");';
+    default: return '';
+  }
+}
+
 /** JavaScript of an email button: opens an email with the filled PDF attached. */
 export function mailScript(to: string, subject: string): string {
   return `this.mailDoc({ bUI: true, cTo: ${JSON.stringify(to)}, cSubject: ${JSON.stringify(subject)} });`;

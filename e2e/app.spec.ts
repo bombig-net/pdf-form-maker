@@ -148,3 +148,16 @@ test('shows every character of a comb field in its own box', async ({ page }) =>
   const lefts = await page.locator('.comb-cell').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
   expect(Math.max(...lefts) - Math.min(...lefts)).toBeLessThan(1);
 });
+
+test('keeps dropdown lists readable in dark mode', async ({ browser }) => {
+  const page = await browser.newPage({ colorScheme: 'dark', viewport: { width: 1400, height: 900 } });
+  await openFile(page, sample('sample-tags.pdf'));
+  await page.locator('.field-row', { hasText: 'Company' }).click();
+  await page.locator('select[name=type]').selectOption('dropdown');
+  await page.keyboard.press('Control+e');
+  const select = page.locator('.test-field[data-type=dropdown] select');
+  await expect(select).toHaveCSS('color-scheme', 'light');
+  await expect(select.locator('option').nth(1)).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await expect(select.locator('option').nth(1)).toHaveCSS('color', 'rgb(23, 23, 23)');
+  await page.close();
+});

@@ -24,6 +24,8 @@ There are four ways, and you can combine them freely.
 | `[Form_Radio_Group_Value]` | Radio button; same group = one choice |
 | `[Form_Dropdown_FieldName]` | Dropdown (options are set in the editor) |
 
+The naming guide on the home screen shows each tag next to the form field it turns into.
+
 The smallest rectangle around the tag becomes the field, and the tag itself is hidden on export. For checkboxes and radio buttons the tag may also sit right next to the box.
 
 **2. Layer name.** If your app exports layers as PDF layers (optional content groups), you can instead put the rectangle on a layer named after the tag. Whether and how layers are exported depends on the app and its export settings. When in doubt, the text tag is the safe choice.
@@ -40,7 +42,7 @@ Existing form fields are kept, so an exported form can be opened again and edite
 
 **Fields**
 
-- Text fields, text areas, checkboxes, radio groups, **dropdowns** and **buttons** (reset the form or **send it by email** with the filled PDF attached).
+- Text fields, text areas, checkboxes, radio groups, **dropdowns** and **buttons** (reset the form, **send it by email** with the filled PDF attached, **print** it or **save it as a PDF**).
 - **Comb fields:** one box per character, e.g. for an IBAN or a postal code.
 - **Calculated fields:** sum, product, average, minimum or maximum of other fields, or a formula such as `Quantity * Price * 1.19`.
 - **Conditional fields:** shown only when a checkbox is checked or a radio group or dropdown has a certain value.

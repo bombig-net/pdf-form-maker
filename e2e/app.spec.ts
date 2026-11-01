@@ -161,3 +161,30 @@ test('keeps dropdown lists readable in dark mode', async ({ browser }) => {
   await expect(select.locator('option').nth(1)).toHaveCSS('color', 'rgb(23, 23, 23)');
   await page.close();
 });
+
+test('previews placeholders and buttons in the editor and updates them live', async ({ page }) => {
+  await openFile(page, sample('sample-layers.pdf'));
+  await page.locator('dialog.modal .btn.primary').click();
+  // Placeholder from the layout is shown in the field, in gray
+  const first = page.locator('.field', { has: page.locator('.field-tag', { hasText: 'FirstName' }) }).first();
+  await expect(first.locator('.fp-text')).toHaveText('Enter your first name');
+  await expect(first.locator('.fp-text')).toHaveCSS('color', 'rgb(153, 153, 153)');
+  // Changing the placeholder in the panel updates the field right away
+  await first.click();
+  await page.locator('input[name=placeholder]').fill('Your first name');
+  await expect(first.locator('.fp-text')).toHaveText('Your first name');
+  await closePanel(page);
+  // A new button shows its caption and background color
+  await draw(page, 'b', 700, 560, 140, 30);
+  const button = page.locator('.field[data-type=reset]').last();
+  await expect(button.locator('.fp-btn')).toHaveText('Reset form');
+  await expect(button.locator('.fp')).toHaveCSS('background-color', 'rgb(235, 235, 235)');
+  await page.locator('input[name=label]').fill('Clear');
+  await expect(button.locator('.fp-btn')).toHaveText('Clear');
+  // P switches the preview off and on again
+  await closePanel(page);
+  await page.keyboard.press('p');
+  await expect(page.locator('.field .fp')).toHaveCount(0);
+  await page.keyboard.press('p');
+  await expect(first.locator('.fp-text')).toHaveText('Your first name');
+});

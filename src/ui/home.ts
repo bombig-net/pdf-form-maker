@@ -1,12 +1,13 @@
 import { store } from '../state';
 import { h, svg } from './dom';
 import { filesFromList, openPdfs } from './actions';
-import { listProjects, deleteProject, openProject, type ProjectSummary } from './recent';
+import { listProjects, deleteProject, openProject, openProjectFile, isProjectFile, PROJECT_EXT, type ProjectSummary } from './recent';
 import { madeBy } from './brand';
 
 const I = {
   home: svg('<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/>'),
   file: svg('<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>'),
+  folder: svg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
   book: svg('<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/>'),
   upload: svg('<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>', 22),
   trash: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', 15),
@@ -40,10 +41,20 @@ function ago(ts: number): string {
   return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/** Opens dropped or chosen files: a project file, or one or more PDFs. */
+async function openFiles(list: FileList | File[]) {
+  const files = Array.from(list);
+  const project = files.find((f) => isProjectFile(f.name));
+  if (project) { await openProjectFile(project); return; }
+  await openPdfs(await filesFromList(files), 'replace');
+}
+
 export function buildHome(openSample: () => void): HTMLElement {
-  const fileIn = h<HTMLInputElement>('input', { type: 'file', accept: 'application/pdf,.pdf', hidden: true });
-  fileIn.addEventListener('change', async () => { if (fileIn.files?.length) await openPdfs(await filesFromList(fileIn.files), 'replace'); fileIn.value = ''; });
+  const fileIn = h<HTMLInputElement>('input', { type: 'file', accept: `application/pdf,.pdf,${PROJECT_EXT}`, hidden: true });
+  fileIn.addEventListener('change', async () => { if (fileIn.files?.length) await openFiles(fileIn.files); fileIn.value = ''; });
   const pick = () => fileIn.click();
+  const projectIn = h<HTMLInputElement>('input', { type: 'file', accept: PROJECT_EXT, hidden: true });
+  projectIn.addEventListener('change', async () => { const f = projectIn.files?.[0]; if (f) await openProjectFile(f); projectIn.value = ''; });
 
   // Sidebar
   const nav = (icon: string, label: string, on: () => void, active = false) => {
@@ -60,6 +71,7 @@ export function buildHome(openSample: () => void): HTMLElement {
     h('nav.side-nav', {},
       nav(I.home, 'Home', () => main.scrollTo({ top: 0, behavior: 'smooth' }), true),
       nav(I.file, 'Open sample', openSample),
+      nav(I.folder, 'Open project file', () => projectIn.click()),
       nav(I.book, 'Naming guide', () => main.querySelector('#guide')?.scrollIntoView({ behavior: 'smooth' }))),
     h('div.side-foot', {}, themeSel, (() => { const p = h('p.side-note'); p.innerHTML = `${I.lock}<span>Files stay on your device.</span>`; return p; })(), madeBy('side')));
 
@@ -87,7 +99,8 @@ export function buildHome(openSample: () => void): HTMLElement {
       recentGrid),
     guide,
     madeBy('foot'),
-    fileIn);
+    fileIn,
+    projectIn);
 
   const card = (p: ProjectSummary) => {
     const del = h('button.icon-btn.recent-del', { type: 'button', title: 'Remove from recent', 'aria-label': `Remove ${p.name} from recent`, onclick: async (e: Event) => { e.stopPropagation(); await deleteProject(p.id); renderRecent(); } });
@@ -118,7 +131,7 @@ export function buildHome(openSample: () => void): HTMLElement {
   home.addEventListener('drop', async (e) => {
     e.preventDefault(); depth = 0; home.classList.remove('dropping');
     const files = e.dataTransfer?.files;
-    if (files?.length) await openPdfs(await filesFromList(files), 'replace');
+    if (files?.length) await openFiles(files);
   });
   return home;
 }

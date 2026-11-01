@@ -133,8 +133,8 @@ export async function runExport(btn?: HTMLButtonElement) {
 }
 
 /** Saves via the Claude preview's download capability, otherwise via a classic link. */
-async function saveFile(name: string, bytes: Uint8Array): Promise<'saved' | 'declined'> {
-  const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
+export async function saveFile(name: string, bytes: Uint8Array, type = 'application/pdf'): Promise<'saved' | 'declined'> {
+  const blob = new Blob([bytes as BlobPart], { type });
   const c = (window as unknown as { claude?: { use?: (n: string) => Promise<{ save(r: { filename: string; data: Blob }): Promise<unknown> } | null> } }).claude;
   if (c?.use) {
     try {

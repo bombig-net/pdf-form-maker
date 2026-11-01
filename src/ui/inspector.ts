@@ -7,7 +7,7 @@ import type { Viewer } from './viewer';
 import { LOCALES, locale, datePattern, type LocaleId } from '../util/locale';
 import { insertAddressBlock, suggestAllFields } from './extras';
 import { saveProjectFile } from './recent';
-import { CALC_OPS, parseFormula, type CalcOp } from '../pdf/logic';
+import { BUTTON_ACTIONS, CALC_OPS, parseFormula, type ButtonAction, type CalcOp } from '../pdf/logic';
 import { startFormFont } from './formfont';
 
 /** Open/closed state of the collapsible sections, remembered across selections and visits. */
@@ -224,24 +224,31 @@ export class Inspector {
     if (f.type === 'radio') wrap.append(this.row('Value', this.input('radioValue', f.radioValue, (v) => set('radioValue', v.replace(/[.\s]+/g, '_')))));
     if (f.type === 'reset') {
       wrap.append(this.row('Caption', this.input('label', f.label, (v) => set('label', v))));
+      const current = (f.buttonAction ?? 'reset') as ButtonAction;
       const act = h<HTMLSelectElement>('select', { name: 'buttonAction', onchange: (e: Event) => {
-        const v = (e.target as HTMLSelectElement).value as 'reset' | 'email';
+        const v = (e.target as HTMLSelectElement).value as ButtonAction;
         const fid = f.id;
         store.commit(() => {
           const ff = store.fields.find((x) => x.id === fid);
           if (!ff) return;
+          // Swap the caption too, unless it was changed by hand
+          const defaults = Object.values(BUTTON_ACTIONS).map((a) => a.caption) as string[];
+          if (!ff.label || defaults.includes(ff.label)) ff.label = BUTTON_ACTIONS[v].caption;
           ff.buttonAction = v;
-          if (v === 'email' && (!ff.label || ff.label === 'Reset form')) ff.label = 'Send form';
-          if (v === 'reset' && ff.label === 'Send form') ff.label = 'Reset form';
         });
         this.render();
-      } }, h('option', { value: 'reset', selected: f.buttonAction !== 'email' }, 'Reset the form'), h('option', { value: 'email', selected: f.buttonAction === 'email' }, 'Send by email'));
+      } }, ...(Object.keys(BUTTON_ACTIONS) as ButtonAction[]).map((k) => h('option', { value: k, selected: k === current }, BUTTON_ACTIONS[k].label)));
       wrap.append(this.row('Action', act));
-      if (f.buttonAction === 'email') {
+      if (current === 'email') {
         wrap.append(this.row('To', this.input('mailTo', f.mailTo ?? '', (v) => set('mailTo', v.trim()), 'forms@example.com')));
         wrap.append(this.row('Subject', this.input('mailSubject', f.mailSubject ?? '', (v) => set('mailSubject', v), 'Completed form')));
-        wrap.append(h('p.hint', {}, 'Opens an email with the filled-in PDF attached. Works in Adobe Acrobat and Reader.'));
       }
+      wrap.append(h('p.hint', {}, {
+        reset: 'Clears every field of the form.',
+        email: 'Opens an email with the filled-in PDF attached.',
+        print: 'Opens the print dialog.',
+        save: 'Opens \u201cSave As\u201d, so the filled-in form can be kept as a PDF.',
+      }[current] + (current === 'reset' ? '' : ' Works in Adobe Acrobat and Reader.')));
     }
     if (f.type === 'text') {
       const chips = h('div.chips', { role: 'radiogroup', 'aria-label': 'Purpose' });

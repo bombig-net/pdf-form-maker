@@ -85,3 +85,30 @@
   .row { grid-template-columns: 84px minmax(0, 1fr); }
   .sync-info { margin-left: 0; }
 }
+
+/* ---------- Dropdown and comb fields ---------- */
+:root { --c-dropdown: #0d9488; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --c-dropdown: #2dd4bf; } }
+:root[data-theme='dark'] { --c-dropdown: #2dd4bf; }
+[data-type='dropdown'] { --c: var(--c-dropdown); }
+.tool[data-tool='dropdown'][aria-pressed='true'] { color: var(--c-dropdown); }
+.field[data-type='dropdown']::before {
+  content: ''; position: absolute; right: 6px; top: 50%; width: 6px; height: 6px; margin-top: -5px;
+  border: solid var(--c); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); pointer-events: none;
+}
+.field.comb, .test-field input.comb {
+  background-image: linear-gradient(to left, color-mix(in srgb, var(--c, #0089c4) 55%, transparent) 1px, transparent 1px);
+  background-size: calc(100% / var(--cells)) 100%;
+}
+.test-field input.comb { padding: 0 0 0 calc((var(--cell) - 1ch) / 2); letter-spacing: calc(var(--cell) - 1ch); }
+.test-field select {
+  width: 100%; height: 100%; margin: 0; padding: 0 3px; border: 0; border-radius: 0;
+  background: rgba(0, 137, 196, 0.08); outline: none;
+}
+.test-field select:focus { box-shadow: inset 0 0 0 1.5px var(--accent); }
+textarea.choices {
+  width: 100%; padding: 8px 9px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--paper);
+  font: 13.5px/1.45 var(--font); color: var(--ink); resize: vertical;
+}
+textarea.choices:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.insert-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }

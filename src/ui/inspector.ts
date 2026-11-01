@@ -1,11 +1,12 @@
 import { store, type ChangeKind } from '../state';
 import type { Field, FieldType, FormatKind, RGB } from '../types';
-import { h, icons, toast } from './dom';
+import { h, icons, svg, toast } from './dom';
 import { effectiveColor, fromHex, toHex } from '../util/color';
 import { uid, round2 } from '../util/geom';
 import type { Viewer } from './viewer';
 import { LOCALES, locale, datePattern, type LocaleId } from '../util/locale';
-import { insertAddressBlock, suggestAllFields } from './extras';
+import { insertAddressBlock } from './extras';
+import { deviceFontsSupported, layoutFont, layoutFontAdded, pickDeviceFont, useLayoutFont } from './devicefonts';
 import { saveProjectFile } from './recent';
 import { BUTTON_ACTIONS, CALC_OPS, parseFormula, type ButtonAction, type CalcOp } from '../pdf/logic';
 import { startFormFont } from './formfont';
@@ -22,6 +23,7 @@ const TYPES: { v: FieldType; label: string }[] = [
   { v: 'radio', label: 'Radio button' },
   { v: 'dropdown', label: 'Dropdown' },
   { v: 'reset', label: 'Button' },
+  { v: 'signature', label: 'Signature' },
 ];
 const FORMATS: { v: FormatKind; label: string }[] = [
   { v: 'none', label: 'Free text' },
@@ -89,32 +91,14 @@ export class Inspector {
     wrap.append(h('h2.panel-title', {}, 'Form'));
     wrap.append(h('p.panel-lead', {}, total
       ? `${total} ${total === 1 ? 'field' : 'fields'} on ${store.pages.length} ${store.pages.length === 1 ? 'page' : 'pages'}.`
-      : 'No fields yet. Pick a tool above and drag a field onto the page.'));
-
-    // Fields by page
-    if (total) {
-      const list = h('div.field-list');
-      store.pages.forEach((p, i) => {
-        const fs = store.fields.filter((f) => f.pageId === p.id);
-        if (!fs.length) return;
-        list.append(h('div.field-list-page', {}, `Page ${i + 1}`));
-        for (const f of fs) {
-          list.append(h('button.field-row', {
-            type: 'button', 'data-type': f.type,
-            onclick: () => { store.select(f.id); this.viewer.scrollToField(f.id); },
-          }, h('span.dot'), h('span.field-row-name', {}, f.type === 'radio' ? `${f.name} · ${f.radioValue}` : f.type === 'reset' ? f.label : f.name),
-          h('span.field-row-src', {}, f.source === 'layer' ? 'Layer' : f.source === 'tag' ? 'Tag' : f.source === 'import' ? 'existing' : f.source === 'auto' ? 'Suggested' : '')));
-        }
-      });
-      wrap.append(this.section('doc:fields', 'Fields', [list], { open: true, meta: String(total) }));
-    }
+      : 'No fields yet. Pick a tool on the left and drag a field onto the page, or use Auto-detect.'));
+    wrap.append(h('p.hint', {}, 'The list of all fields is in the Fields tab on the left.'));
 
     wrap.append(this.formFontSection());
 
-    const detect = h('button.btn.secondary', { type: 'button', onclick: () => suggestAllFields((id) => this.viewer.scrollToField(id)) }, 'Detect fields');
     const addr = h('button.btn.secondary', { type: 'button', onclick: () => insertAddressBlock(this.viewer) }, 'Address block');
-    wrap.append(this.section('doc:insert', 'Insert', [h('div.insert-row', {}, detect, addr),
-      h('p.hint', {}, 'Detect fields looks for empty boxes, lines and checkboxes without tags. Address block adds name, street, postal code, city, email and phone.')], { open: true }));
+    wrap.append(this.section('doc:insert', 'Insert', [h('div.insert-row', {}, addr),
+      h('p.hint', {}, 'Adds name, street, postal code, city, email and phone as ready-made fields.')]));
 
     const region = h<HTMLSelectElement>('select', { name: 'locale', onchange: (e: Event) => { store.options.locale = (e.target as HTMLSelectElement).value; store.emit('options'); } },
       ...(Object.keys(LOCALES) as LocaleId[]).map((id) => {
@@ -137,7 +121,7 @@ export class Inspector {
       h('p.hint', {}, 'Downloads the PDF with all fields and settings as one file, to back it up or pass it on. Open it again from the home screen.')]));
 
     wrap.append(this.section('doc:shortcuts', 'Shortcuts', [h('dl.shortcuts', {},
-      ...[['V', 'Select'], ['T / A', 'Text field / text area'], ['C / R', 'Checkbox / radio'], ['D / B', 'Dropdown / button'], ['⇧ Click', 'Select multiple fields'], ['Drag', 'Selection rectangle on empty space'], ['Del', 'Delete selection'], ['Arrows', 'Move (⇧ = 10 pt)'], ['⌘/Ctrl C / V', 'Copy and paste'], ['⌘/Ctrl A', 'All fields on the page'], ['⌘/Ctrl D', 'Duplicate field'], ['⌘/Ctrl Z', 'Undo'], ['⌘/Ctrl E', 'Test the form']]
+      ...[['V', 'Select'], ['H or Space', 'Move the view'], ['T / A', 'Text field / text area'], ['C / R', 'Checkbox / radio'], ['D / B / S', 'Dropdown / button / signature'], ['P', 'Preview field content'], ['⇧ Click', 'Select multiple fields'], ['Drag', 'Selection rectangle on empty space'], ['Del', 'Delete selection'], ['Arrows', 'Move (⇧ = 10 pt)'], ['⌘/Ctrl C / V', 'Copy and paste'], ['⌘/Ctrl A', 'All fields on the page'], ['⌘/Ctrl D', 'Duplicate field'], ['⌘/Ctrl Z', 'Undo'], ['⌘/Ctrl E', 'Test the form']]
         .flatMap(([k, v]) => [h('dt', {}, h('kbd', {}, k)), h('dd', {}, v)]))]));
     return wrap;
   }
@@ -153,9 +137,27 @@ export class Inspector {
     const children: (Node | null)[] = [mode];
     const padding = this.row('Padding', this.number('formPadding', ff.padding ?? 0, (v) => update({ padding: Math.max(0, Math.min(20, v)) }), 0, 0.5), 'pt');
     if (ff.mode === 'uniform') {
-      const fam = h<HTMLSelectElement>('select', { name: 'formFontFamily', onchange: (e: Event) => update({ family: (e.target as HTMLSelectElement).value }) },
-        ...['Helvetica', 'Times', 'Courier'].map((v) => h('option', { value: v, selected: ff.family === v }, `${v} (${v === 'Helvetica' ? 'sans' : v === 'Times' ? 'serif' : 'mono'})`)),
-        ...store.customFonts.map((c) => h('option', { value: 'custom:' + c.id, selected: ff.family === 'custom:' + c.id }, c.name)));
+      const fam = h<HTMLSelectElement>('select', { name: 'formFontFamily', onchange: async (e: Event) => {
+        const v = (e.target as HTMLSelectElement).value;
+        if (v.startsWith('__')) {
+          (e.target as HTMLSelectElement).value = ff.family;
+          const id = v === '__device' ? await pickDeviceFont() : await this.uploadFontFile();
+          if (id) update({ family: id });
+          this.render();
+          return;
+        }
+        update({ family: v });
+      } }, ...this.fontOptions(ff.family));
+      // The layout uses a font that may be installed here: offer it for typing
+      const lf = deviceFontsSupported() ? layoutFont() : null;
+      if (lf && !layoutFontAdded(lf)) {
+        children.push(h('div.font-match', {},
+          h('span', {}, `Your layout uses \u201c${lf.family}\u201d.`),
+          h('button.btn.secondary.small', { type: 'button', onclick: async () => {
+            const id = await useLayoutFont(lf);
+            if (id) { update({ family: id }); this.render(); }
+          } }, `Use ${lf.family}`)));
+      }
       const style = h('div.segmented', {},
         h('button', { type: 'button', 'aria-pressed': String(ff.bold), style: 'font-weight:700', onclick: () => { update({ bold: !ff.bold }); this.render(); } }, 'Bold'),
         h('button', { type: 'button', 'aria-pressed': String(ff.italic), style: 'font-style:italic', onclick: () => { update({ italic: !ff.italic }); this.render(); } }, 'Italic'));
@@ -182,7 +184,20 @@ export class Inspector {
     const wrap = h('div.panel', { 'data-type': f.type });
     const close = h('button.icon-btn', { type: 'button', 'aria-label': 'Clear selection', title: 'Close', onclick: () => store.select(null) });
     close.innerHTML = icons.close;
-    wrap.append(h('div.panel-head', {}, h('span.type-dot'), h('h2.panel-title', {}, TYPES.find((t) => t.v === f.type)!.label), close));
+    // Head: type icon, field name, type, and a menu for duplicate and delete
+    const typeIcon = h('span.fh-icon', { 'aria-hidden': 'true' });
+    typeIcon.innerHTML = icons[f.type];
+    const more = h<HTMLButtonElement>('button.icon-btn', { type: 'button', 'aria-label': 'More actions', title: 'More actions', 'aria-haspopup': 'menu', 'aria-expanded': 'false' });
+    more.innerHTML = svg('<circle cx="5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="12" r="1.3" fill="currentColor"/>');
+    const pop = h('div.menu.menu-right', { role: 'menu', hidden: true },
+      h('button.menu-item', { type: 'button', role: 'menuitem', onclick: () => duplicateField(f.id) }, h('span', {}, 'Duplicate'), h('kbd', {}, '\u2318D')),
+      h('button.menu-item.danger', { type: 'button', role: 'menuitem', onclick: () => deleteField(f.id) }, h('span', {}, 'Delete'), h('kbd', {}, 'Del')));
+    more.addEventListener('click', (e) => { e.stopPropagation(); pop.hidden = !pop.hidden; more.setAttribute('aria-expanded', String(!pop.hidden)); });
+    document.addEventListener('click', () => { pop.hidden = true; more.setAttribute('aria-expanded', 'false'); }, { once: true });
+    const label = f.type === 'reset' ? f.label || f.name : f.name;
+    wrap.append(h('div.panel-head.field-head', {}, typeIcon,
+      h('div.fh-text', {}, h('h2.panel-title', {}, label || TYPES.find((t) => t.v === f.type)!.label), h('span.fh-type', {}, TYPES.find((t) => t.v === f.type)!.label)),
+      h('span.file-wrap', {}, more, pop), close));
 
     const set = <K extends keyof Field>(key: K, val: Field[K], kinds: ChangeKind[] = ['fields']) => {
       const fid = f.id;
@@ -262,14 +277,19 @@ export class Inspector {
     }
     if (f.type === 'text' || f.type === 'area') {
       wrap.append(this.row('Placeholder', this.input('placeholder', f.placeholder, (v) => setShared('placeholder', v), 'Gray hint text, disappears when typing')));
+      if (!f.calc) wrap.append(this.row('Default value', this.input('defaultValue', f.defaultValue ?? '', (v) => setShared('defaultValue', v || undefined), 'Already filled in, can be changed')));
     }
     if (f.type === 'dropdown') {
       const ta = h<HTMLTextAreaElement>('textarea.choices', { name: 'choices', rows: 5, spellcheck: 'false', 'aria-label': 'Dropdown options, one per line',
         oninput: (e: Event) => setShared('choices', (e.target as HTMLTextAreaElement).value.split('\n')) });
       ta.value = (f.choices ?? []).join('\n');
       wrap.append(h('label.block-label', {}, 'Options'), ta, h('p.hint', {}, 'One option per line, in the order they should appear.'));
+      const def = h<HTMLSelectElement>('select', { name: 'defaultValue', onchange: (e: Event) => setShared('defaultValue', (e.target as HTMLSelectElement).value || undefined) },
+        h('option', { value: '' }, 'None (empty)'), ...(f.choices ?? []).filter((c) => c.trim()).map((c) => h('option', { value: c, selected: c === f.defaultValue }, c)));
+      wrap.append(this.row('Default', def));
     }
-    if (f.type !== 'reset') wrap.append(this.toggle('Required', f.required, (v) => setShared('required', v)));
+    if (f.type === 'signature') wrap.append(h('p.hint', {}, 'People sign here in Adobe Acrobat or Reader. Other PDF viewers show an empty box that can be signed by hand after printing.'));
+    if (f.type !== 'reset') wrap.append(this.behavior(f, setShared));
 
     // ----- Collapsible sections -----
     if (f.type === 'text' || f.type === 'area') {
@@ -277,28 +297,16 @@ export class Inspector {
       for (const [v, l] of [['left', 'Left'], ['center', 'Center'], ['right', 'Right']] as const) {
         al.append(h('button', { type: 'button', role: 'radio', 'aria-checked': String(f.align === v), onclick: () => { setShared('align', v); this.render(); } }, l));
       }
-      const comb = f.type === 'text' ? this.toggle('Comb (one box per character)', !!f.comb, (v) => {
-        const fid = f.id;
-        store.commit(() => {
-          const ff = store.fields.find((x) => x.id === fid);
-          if (!ff) return;
-          for (const x of store.fields) if (x.name === ff.name && x.type === ff.type) {
-            x.comb = v;
-            if (v && !(x.maxLength > 0)) x.maxLength = x.format === 'zip' ? 5 : 10;
-          }
-        });
-        this.render();
-      }, 'Splits the field into equal boxes, e.g. for an IBAN, a postal code or a date. The number of boxes is the max. length.') : null;
       const meta = [f.align !== 'left' ? (f.align === 'center' ? 'Centered' : 'Right') : '', f.maxLength > 0 ? `max. ${f.maxLength}` : '', f.comb ? 'Comb' : ''].filter(Boolean).join(' · ');
       wrap.append(this.section('f:input', 'Input', [
         this.row('Alignment', al),
         this.row('Max. length', this.number('maxLength', f.maxLength, (v) => setShared('maxLength', Math.max(0, Math.round(v))), 0, 1, '0 = unlimited')),
-        comb,
+        f.comb ? h('p.hint', {}, 'Comb: the number of boxes is the max. length.') : null,
       ], { meta }));
     }
     if (f.type === 'text') wrap.append(this.calcSection(f));
     wrap.append(this.visibilitySection(f));
-    wrap.append(this.fontSection(f, setShared, setFont, set, uniform));
+    if (f.type !== 'signature') wrap.append(this.fontSection(f, setShared, setFont, set, uniform));
 
     const grid = h('div.pos-grid');
     for (const [k, l] of [['x', 'X'], ['y', 'Y'], ['w', 'Width'], ['h', 'Height']] as const) {
@@ -316,13 +324,41 @@ export class Inspector {
         'Static text from the template inside the field area becomes invisible on export.'),
     ]));
 
-    const dup = h('button.btn.secondary', { type: 'button', onclick: () => duplicateField(f.id) }, 'Duplicate');
-    const del = h('button.btn.danger', { type: 'button', onclick: () => deleteField(f.id) });
-    del.innerHTML = `${icons.trash}<span>Delete</span>`;
-    wrap.append(h('div.panel-actions', {}, dup, del));
 
     queueMicrotask(() => this.refreshValues());
     return wrap;
+  }
+
+  /** Behavior: compact checkboxes for required, read-only, multi-line, comb, checked by default. */
+  private behavior(f: Field, setShared: <K extends keyof Field>(key: K, val: Field[K], extra?: Partial<Field>) => void): HTMLElement {
+    const fid = f.id;
+    const sameField = (fn: (x: Field) => void) => store.commit(() => {
+      const ff = store.fields.find((x) => x.id === fid);
+      if (ff) for (const x of store.fields) if (x.name === ff.name && x.type === ff.type) fn(x);
+    }, ['fields', 'selection']);
+    const box = (name: string, label: string, checked: boolean, on: (v: boolean) => void, title = '') => {
+      const id = `bh-${name}`;
+      return h('label.bh', { for: id, title },
+        h('input', { type: 'checkbox', id, name, checked, onchange: (e: Event) => { on((e.target as HTMLInputElement).checked); this.render(); } }),
+        h('span', {}, label));
+    };
+    const items: HTMLElement[] = [box('required', 'Required', f.required, (v) => setShared('required', v), 'Must be filled in before the form is sent')];
+    if (f.type !== 'signature') items.push(box('readOnly', 'Read-only', !!f.readOnly, (v) => setShared('readOnly', v || undefined), 'Shows its value but cannot be changed'));
+    if (f.type === 'text' || f.type === 'area') {
+      items.push(box('multiline', 'Multi-line', f.type === 'area', (v) => sameField((x) => {
+        x.type = v ? 'area' : 'text';
+        if (v) { x.comb = false; if (!x.fontSize) x.fontSize = 10; }
+      }), 'Several lines of text, e.g. for a message'));
+    }
+    if (f.type === 'text') {
+      items.push(box('comb', 'Comb', !!f.comb, (v) => sameField((x) => {
+        x.comb = v;
+        if (v && !(x.maxLength > 0)) x.maxLength = x.format === 'zip' ? 5 : 10;
+      }), 'One box per character, e.g. for an IBAN or a postal code'));
+    }
+    if (f.type === 'check') items.push(box('defaultOn', 'Checked', f.defaultValue === 'on', (v) => setShared('defaultValue', v ? 'on' : undefined), 'Checked when the form is opened'));
+    if (f.type === 'radio') items.push(box('defaultOn', 'Selected', f.defaultValue === f.radioValue, (v) => setShared('defaultValue', v ? f.radioValue : undefined), 'This option is selected when the form is opened'));
+    return h('div.behavior', { role: 'group', 'aria-label': 'Behavior' }, h('span.block-label', {}, 'Behavior'), h('div.bh-grid', {}, ...items));
   }
 
   /** Font & color: follows the form font unless the field has its own settings. */
@@ -342,15 +378,15 @@ export class Inspector {
       if (textual) {
         const fam = h<HTMLSelectElement>('select', { name: 'fontFamily', onchange: async (e: Event) => {
           const v = (e.target as HTMLSelectElement).value;
-          if (v === '__upload') { (e.target as HTMLSelectElement).value = f.fontFamily; await this.uploadFont(f); return; }
+          if (v.startsWith('__')) {
+            (e.target as HTMLSelectElement).value = f.fontFamily;
+            const id = v === '__device' ? await pickDeviceFont() : await this.uploadFontFile();
+            if (id) setFont('fontFamily', id);
+            this.render();
+            return;
+          }
           setFont('fontFamily', v);
-        } },
-          h('option', { value: 'Helvetica', selected: f.fontFamily === 'Helvetica' }, 'Helvetica (sans)'),
-          h('option', { value: 'Times', selected: f.fontFamily === 'Times' }, 'Times (serif)'),
-          h('option', { value: 'Courier', selected: f.fontFamily === 'Courier' }, 'Courier (mono)'),
-          ...store.customFonts.map((c) => h('option', { value: 'custom:' + c.id, selected: f.fontFamily === 'custom:' + c.id }, c.name)),
-          h('option', { value: '__upload' }, 'Upload your own font …'),
-        );
+        } }, ...this.fontOptions(f.fontFamily));
         const style = h('div.segmented', {},
           h('button', { type: 'button', 'aria-pressed': String(f.bold), onclick: () => { setFont('bold', !f.bold); this.render(); }, style: 'font-weight:700' }, 'Bold'),
           h('button', { type: 'button', 'aria-pressed': String(f.italic), onclick: () => { setFont('italic', !f.italic); this.render(); }, style: 'font-style:italic' }, 'Italic'));
@@ -481,24 +517,35 @@ export class Inspector {
     }
   }
 
-  private async uploadFont(f: Field) {
-    const inp = h<HTMLInputElement>('input', { type: 'file', accept: '.ttf,.otf,font/ttf,font/otf' });
-    inp.onchange = async () => {
-      const file = inp.files?.[0];
-      if (!file) return;
-      if (!/\.(ttf|otf)$/i.test(file.name)) { toast('Please choose a TTF or OTF file.', 'warn'); return; }
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const cf = { id: uid('font'), name: file.name.replace(/\.(ttf|otf)$/i, ''), bytes };
-      store.customFonts.push(cf);
-      const fid = f.id;
-      store.commit(() => {
-        const ff = store.fields.find((x) => x.id === fid);
-        if (ff) for (const x of store.fields) if (x.name === ff.name && x.type === ff.type) x.fontFamily = 'custom:' + cf.id;
-      });
-      this.render();
-      toast(`The font “${cf.name}” will be fully embedded on export.`);
-    };
-    inp.click();
+  /** Font menu: the standard PDF fonts, fonts already in this form, and ways to add one. */
+  private fontOptions(current: string): HTMLElement[] {
+    return [
+      h('optgroup', { label: 'Standard PDF fonts' },
+        ...['Helvetica', 'Times', 'Courier'].map((v) => h('option', { value: v, selected: current === v }, `${v} (${v === 'Helvetica' ? 'sans' : v === 'Times' ? 'serif' : 'mono'})`))),
+      store.customFonts.length ? h('optgroup', { label: 'In this form' },
+        ...store.customFonts.map((c) => h('option', { value: 'custom:' + c.id, selected: current === 'custom:' + c.id }, c.name))) : null,
+      h('optgroup', { label: 'Add a font' },
+        deviceFontsSupported() ? h('option', { value: '__device' }, 'From this device \u2026') : null,
+        h('option', { value: '__upload' }, 'Upload a font file \u2026')),
+    ].filter(Boolean) as HTMLElement[];
+  }
+
+  /** Asks for a TTF or OTF file and adds it to the form; returns its family value. */
+  private uploadFontFile(): Promise<string | null> {
+    return new Promise((resolve) => {
+      const inp = h<HTMLInputElement>('input', { type: 'file', accept: '.ttf,.otf,font/ttf,font/otf' });
+      inp.onchange = async () => {
+        const file = inp.files?.[0];
+        if (!file) { resolve(null); return; }
+        if (!/\.(ttf|otf)$/i.test(file.name)) { toast('Please choose a TTF or OTF file.', 'warn'); resolve(null); return; }
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const cf = { id: uid('font'), name: file.name.replace(/\.(ttf|otf)$/i, ''), bytes };
+        store.customFonts.push(cf);
+        toast(`The font \u201c${cf.name}\u201d will be fully embedded on export.`);
+        resolve('custom:' + cf.id);
+      };
+      inp.click();
+    });
   }
 
   /* ---------------- Form building blocks ---------------- */

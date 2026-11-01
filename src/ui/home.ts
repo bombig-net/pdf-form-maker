@@ -23,6 +23,8 @@ const GUIDE: GuideRow[] = [
   { type: 'check', code: '[Form_Check_Terms]', desc: 'Checkbox. The tag can sit next to the box.' },
   { type: 'radio', code: '[Form_Radio_Salutation_Ms]', desc: 'Radio button: group name, then the value' },
   { type: 'dropdown', code: '[Form_Dropdown_Country]', desc: 'Dropdown. You add the options in the editor.' },
+  { type: 'signature', code: '[Form_Signature_Applicant]', desc: 'Signature field, signed in Acrobat Reader' },
+  { type: 'reset', code: '[Form_Button_Send]', desc: 'Button: Send, Print, Save or Reset. Your box color becomes the button color.' },
 ];
 
 const handles = () => ['tl', 'tr', 'bl', 'br'].map((p) => h(`span.mini-handle.${p}`));
@@ -37,6 +39,8 @@ function layoutMini(r: GuideRow): HTMLElement {
     case 'area': return h('div.mini', {}, h('span.mini-label', {}, 'Message'), box('.sel.tall', tag(r.code), ...handles()));
     case 'dropdown': return h('div.mini', {}, h('span.mini-label', {}, 'Country'), box('.sel', tag(r.code), ...handles()));
     case 'check': return h('div.mini', {}, h('div.mini-line', {}, h('span.mini-square'), h('span', {}, 'I accept the terms'), tag(r.code)));
+    case 'signature': return h('div.mini', {}, h('span.mini-label', {}, 'Signature'), box('.sel.sig', tag(r.code), ...handles()));
+    case 'reset': return h('div.mini', {}, box('.sel.btn-box', tag(r.code), ...handles()));
     default: return h('div.mini', {},
       h('div.mini-line', {}, h('span.mini-circle'), h('span.mini-opt', {}, 'Ms'), tag('[Form_Radio_Salutation_Ms]')),
       h('div.mini-line', {}, h('span.mini-circle'), h('span.mini-opt', {}, 'Mr'), tag('[Form_Radio_Salutation_Mr]')));
@@ -54,6 +58,8 @@ function pdfMini(r: GuideRow): HTMLElement {
       const chev = h('span.mini-chev'); chev.innerHTML = svg('<path d="M7 10l5 5 5-5"/>', 12);
       return h('div.mini', {}, h('span.mini-label', {}, 'Country'), field('.select', h('span', {}, 'Germany'), chev));
     }
+    case 'signature': return h('div.mini', {}, h('span.mini-label', {}, 'Signature'), field('.sig', h('span.mini-script', {}, 'Anna Berg')));
+    case 'reset': return h('div.mini', {}, h('div.mini-box.btn-box.mini-button', {}, h('span', {}, 'Send form')));
     case 'check': {
       const sq = h('span.mini-square.mini-field.on'); sq.innerHTML = tick;
       return h('div.mini', {}, h('div.mini-line', {}, sq, h('span', {}, 'I accept the terms')));

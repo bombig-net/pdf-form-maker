@@ -90,6 +90,11 @@
 .mini-square.on { color: #14171c; }
 .mini-circle.on::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #14171c; }
 .mini-opt { min-width: 18px; }
+.mini-box.sig { height: 30px; align-items: flex-end; padding-bottom: 4px; }
+.mini-script { font: italic 15px/1 Georgia, 'Times New Roman', serif; color: #1b2a5a; }
+.mini-box.btn-box { justify-content: center; background: #1f6f4a; border-color: #1f6f4a; width: 72%; }
+.mini-box.btn-box .mini-tag { color: #d9f5e7; }
+.mini-button { color: #fff; font-size: 11px; font-weight: 600; border-radius: 3px; }
 /* Caption inside each artboard, shown on phones where the column headings are hidden */
 .mini::before { content: attr(data-cap); display: none; position: absolute; right: 10px; top: 7px; color: #8a8f99; font-size: 10px; }
 

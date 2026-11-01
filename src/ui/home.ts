@@ -62,10 +62,18 @@ export function buildHome(openSample: () => void): HTMLElement {
     b.innerHTML = `${icon}<span>${label}</span>`;
     return b;
   };
-  const themeSel = h<HTMLSelectElement>('select', { 'aria-label': 'Theme', onchange: (e: Event) => applyTheme((e.target as HTMLSelectElement).value as Theme) },
-    ...(['system', 'light', 'dark'] as Theme[]).map((t) => h('option', { value: t }, t === 'system' ? 'System theme' : t === 'light' ? 'Light' : 'Dark')));
-  themeSel.value = applyTheme();
-  const logo = h('div.side-logo', {}, h('span.logo-mark', { 'aria-hidden': 'true' }), h('span', {}, 'Form Maker'));
+  // Theme switch: in the sidebar on wide screens, at the end of the page on phones
+  const themeSelects: HTMLSelectElement[] = [];
+  const themeSelect = () => {
+    const sel = h<HTMLSelectElement>('select', { 'aria-label': 'Theme', onchange: (e: Event) => {
+      const t = applyTheme((e.target as HTMLSelectElement).value as Theme);
+      for (const s of themeSelects) s.value = t;
+    } }, ...(['system', 'light', 'dark'] as Theme[]).map((t) => h('option', { value: t }, t === 'system' ? 'System theme' : t === 'light' ? 'Light' : 'Dark')));
+    sel.value = applyTheme();
+    themeSelects.push(sel);
+    return sel;
+  };
+  const logo = h('div.side-logo', {}, h('span.logo-mark', { 'aria-hidden': 'true' }), h('span', {}, 'PDF Form Maker'));
   const side = h('aside.home-side', { 'aria-label': 'Navigation' },
     logo,
     h('nav.side-nav', {},
@@ -73,7 +81,7 @@ export function buildHome(openSample: () => void): HTMLElement {
       nav(I.file, 'Open sample', openSample),
       nav(I.folder, 'Open project file', () => projectIn.click()),
       nav(I.book, 'Naming guide', () => main.querySelector('#guide')?.scrollIntoView({ behavior: 'smooth' }))),
-    h('div.side-foot', {}, themeSel, (() => { const p = h('p.side-note'); p.innerHTML = `${I.lock}<span>Files stay on your device.</span>`; return p; })(), madeBy('side')));
+    h('div.side-foot', {}, themeSelect(), (() => { const p = h('p.side-note'); p.innerHTML = `${I.lock}<span>Files stay on your device.</span>`; return p; })(), madeBy('side')));
 
   // Main
   const points = h('ul.hero-points', {}, ...['Nothing is uploaded', 'Works with any layout app', 'Ready for Acrobat Reader'].map((t) => {
@@ -98,7 +106,7 @@ export function buildHome(openSample: () => void): HTMLElement {
       h('div.section-row', {}, h('h2.section-head', { id: 'recent-title' }, 'Recent'), recentCount),
       recentGrid),
     guide,
-    madeBy('foot'),
+    h('div.home-foot', {}, themeSelect(), madeBy('foot')),
     fileIn,
     projectIn);
 

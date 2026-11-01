@@ -1,0 +1,18 @@
+/* "Made by bombig.net" link with logo */
+:root { --bombig-bolt: #10b981; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --bombig-bolt: #a7f3d0; } }
+:root[data-theme='dark'] { --bombig-bolt: #a7f3d0; }
+
+.made-by {
+  display: flex; align-items: center; gap: 8px; width: fit-content; padding: 4px;
+  border-radius: 6px; color: var(--ink-3); font-size: 12px; text-decoration: none;
+}
+.made-by .bombig-logo { height: 21px; width: auto; color: var(--ink-2); transition: color 0.15s; }
+.made-by:hover .bombig-logo { color: var(--ink); }
+.bombig-bolt { fill: var(--bombig-bolt); }
+.made-by.foot { display: none; margin: 8px auto 0; }
+
+@media (max-width: 760px) {
+  .made-by.side { display: none; }
+  .made-by.foot { display: flex; }
+}

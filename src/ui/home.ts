@@ -2,6 +2,7 @@ import { store } from '../state';
 import { h, svg } from './dom';
 import { filesFromList, openPdfs } from './actions';
 import { listProjects, deleteProject, openProject, type ProjectSummary } from './recent';
+import { madeBy } from './brand';
 
 const I = {
   home: svg('<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/>'),
@@ -60,7 +61,7 @@ export function buildHome(openSample: () => void): HTMLElement {
       nav(I.home, 'Home', () => main.scrollTo({ top: 0, behavior: 'smooth' }), true),
       nav(I.file, 'Open sample', openSample),
       nav(I.book, 'Naming guide', () => main.querySelector('#guide')?.scrollIntoView({ behavior: 'smooth' }))),
-    h('div.side-foot', {}, themeSel, (() => { const p = h('p.side-note'); p.innerHTML = `${I.lock}<span>Files stay on your device.</span>`; return p; })()));
+    h('div.side-foot', {}, themeSel, (() => { const p = h('p.side-note'); p.innerHTML = `${I.lock}<span>Files stay on your device.</span>`; return p; })(), madeBy('side')));
 
   // Main
   const points = h('ul.hero-points', {}, ...['Nothing is uploaded', 'Works with any layout app', 'Ready for Acrobat Reader'].map((t) => {
@@ -85,6 +86,7 @@ export function buildHome(openSample: () => void): HTMLElement {
       h('div.section-row', {}, h('h2.section-head', { id: 'recent-title' }, 'Recent'), recentCount),
       recentGrid),
     guide,
+    madeBy('foot'),
     fileIn);
 
   const card = (p: ProjectSummary) => {

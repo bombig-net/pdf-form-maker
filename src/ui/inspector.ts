@@ -7,6 +7,7 @@ import type { Viewer } from './viewer';
 import { LOCALES, locale, datePattern, type LocaleId } from '../util/locale';
 import { insertAddressBlock } from './extras';
 import { saveProjectFile } from './recent';
+import { CALC_OPS, parseFormula, type CalcOp } from '../pdf/logic';
 
 const TYPES: { v: FieldType; label: string }[] = [
   { v: 'text', label: 'Text field' },
@@ -14,7 +15,7 @@ const TYPES: { v: FieldType; label: string }[] = [
   { v: 'check', label: 'Checkbox' },
   { v: 'radio', label: 'Radio button' },
   { v: 'dropdown', label: 'Dropdown' },
-  { v: 'reset', label: 'Reset button' },
+  { v: 'reset', label: 'Button' },
 ];
 const FORMATS: { v: FormatKind; label: string }[] = [
   { v: 'none', label: 'Free text' },
@@ -177,7 +178,27 @@ export class Inspector {
     const syncInfo = h('p.hint.sync-info');
     wrap.append(syncInfo);
     if (f.type === 'radio') wrap.append(this.row('Value', this.input('radioValue', f.radioValue, (v) => set('radioValue', v.replace(/[.\s]+/g, '_')))));
-    if (f.type === 'reset') wrap.append(this.row('Caption', this.input('label', f.label, (v) => set('label', v))));
+    if (f.type === 'reset') {
+      wrap.append(this.row('Caption', this.input('label', f.label, (v) => set('label', v))));
+      const act = h<HTMLSelectElement>('select', { name: 'buttonAction', onchange: (e: Event) => {
+        const v = (e.target as HTMLSelectElement).value as 'reset' | 'email';
+        const fid = f.id;
+        store.commit(() => {
+          const ff = store.fields.find((x) => x.id === fid);
+          if (!ff) return;
+          ff.buttonAction = v;
+          if (v === 'email' && (!ff.label || ff.label === 'Reset form')) ff.label = 'Send form';
+          if (v === 'reset' && ff.label === 'Send form') ff.label = 'Reset form';
+        });
+        this.render();
+      } }, h('option', { value: 'reset', selected: f.buttonAction !== 'email' }, 'Reset the form'), h('option', { value: 'email', selected: f.buttonAction === 'email' }, 'Send by email'));
+      wrap.append(this.row('Action', act));
+      if (f.buttonAction === 'email') {
+        wrap.append(this.row('To', this.input('mailTo', f.mailTo ?? '', (v) => set('mailTo', v.trim()), 'forms@example.com')));
+        wrap.append(this.row('Subject', this.input('mailSubject', f.mailSubject ?? '', (v) => set('mailSubject', v), 'Completed form')));
+        wrap.append(h('p.hint', {}, 'Opens an email with the filled-in PDF attached. Works in Adobe Acrobat and Reader.'));
+      }
+    }
 
     // Input
     if (f.type === 'text' || f.type === 'area') {
@@ -222,9 +243,11 @@ export class Inspector {
       ta.value = (f.choices ?? []).join('\n');
       wrap.append(ta, h('p.hint', {}, 'One option per line, in the order they should appear.'));
     }
+    if (f.type === 'text') this.calcSection(wrap, f);
     if (f.type !== 'reset') {
       wrap.append(this.toggle('Required', f.required, (v) => setShared('required', v)));
     }
+    this.visibilitySection(wrap, f);
     wrap.append(this.toggle('Hide text underneath', f.hideText, (v) => set('hideText', v),
       'Static text from the template inside the field area becomes invisible on export.'));
 
@@ -278,6 +301,80 @@ export class Inspector {
 
     queueMicrotask(() => this.refreshValues());
     return wrap;
+  }
+
+  /** Calculation: sum, product, average, min, max of other fields, or a formula. */
+  private calcSection(wrap: HTMLElement, f: Field) {
+    wrap.append(h('h3.section-title', {}, 'Calculation'));
+    const fid = f.id;
+    const setCalc = (calc: Field['calc']) => store.commit(() => {
+      const ff = store.fields.find((x) => x.id === fid);
+      if (!ff) return;
+      for (const x of store.fields) if (x.name === ff.name && x.type === ff.type) {
+        x.calc = calc;
+        if (calc && x.format === 'none') x.format = 'number';
+      }
+    }, ['fields'], `${fid}:calc`);
+    const op = h<HTMLSelectElement>('select', { name: 'calcOp', onchange: (e: Event) => {
+      const v = (e.target as HTMLSelectElement).value as CalcOp | '';
+      setCalc(v ? { op: v, fields: f.calc?.fields ?? [], formula: f.calc?.formula ?? '' } : undefined);
+      this.render();
+    } }, h('option', { value: '', selected: !f.calc }, 'None (typed in)'),
+      ...(Object.keys(CALC_OPS) as CalcOp[]).map((k) => h('option', { value: k, selected: f.calc?.op === k }, CALC_OPS[k])));
+    wrap.append(this.row('Value', op));
+    if (!f.calc) return;
+    const others = [...new Set(store.fields.filter((x) => x.type === 'text' && x.name !== f.name).map((x) => x.name))];
+    if (f.calc.op === 'formula') {
+      const err = h('p.hint.formula-error');
+      const check = (v: string) => { try { parseFormula(v, new Set(others)); err.textContent = ''; } catch (e) { err.textContent = (e as Error).message; } };
+      const inp = this.input('formula', f.calc.formula ?? '', (v) => { setCalc({ op: 'formula', formula: v }); check(v); }, 'Quantity * Price');
+      wrap.append(this.row('Formula', inp), err,
+        h('p.hint', {}, `Use field names, numbers, + \u2212 \u00d7 / and parentheses. Fields: ${others.slice(0, 12).join(', ')}${others.length > 12 ? ' \u2026' : ''}`));
+      check(f.calc.formula ?? '');
+    } else {
+      const chosen = new Set(f.calc.fields ?? []);
+      const list = h('div.calc-list', { role: 'group', 'aria-label': 'Fields to calculate' },
+        ...others.map((n) => {
+          const id = uid('c');
+          return h('label.calc-item', { for: id }, h('input', { type: 'checkbox', id, checked: chosen.has(n), onchange: (e: Event) => {
+            if ((e.target as HTMLInputElement).checked) chosen.add(n); else chosen.delete(n);
+            setCalc({ op: f.calc!.op, fields: others.filter((x) => chosen.has(x)) });
+          } }), h('span', {}, n));
+        }));
+      wrap.append(others.length ? list : h('p.hint', {}, 'Add more text fields first.'));
+    }
+    wrap.append(h('p.hint', {}, 'Calculated fields are read-only and update while the form is filled in (Adobe Acrobat and Reader).'));
+  }
+
+  /** Visibility: always, or only if a checkbox is checked / a radio or dropdown has a value. */
+  private visibilitySection(wrap: HTMLElement, f: Field) {
+    wrap.append(h('h3.section-title', {}, 'Visibility'));
+    const opts: { key: string; label: string; field: string; value?: string }[] = [];
+    const seen = new Set<string>();
+    for (const x of store.fields) {
+      if (x.name === f.name || seen.has(x.type + x.name)) continue;
+      if (x.type === 'check') { seen.add(x.type + x.name); opts.push({ key: JSON.stringify([x.name]), label: `${x.name} is checked`, field: x.name }); }
+      if (x.type === 'radio') {
+        if (!seen.has('radio' + x.name + x.radioValue)) { seen.add('radio' + x.name + x.radioValue); opts.push({ key: JSON.stringify([x.name, x.radioValue]), label: `${x.name} = ${x.radioValue}`, field: x.name, value: x.radioValue }); }
+      }
+      if (x.type === 'dropdown') {
+        seen.add(x.type + x.name);
+        for (const c of (x.choices ?? []).filter((c) => c.trim())) opts.push({ key: JSON.stringify([x.name, c]), label: `${x.name} = ${c}`, field: x.name, value: c });
+      }
+    }
+    const cur = f.showIf ? JSON.stringify(f.showIf.value === undefined ? [f.showIf.field] : [f.showIf.field, f.showIf.value]) : '';
+    const sel = h<HTMLSelectElement>('select', { name: 'showIf', onchange: (e: Event) => {
+      const o = opts.find((x) => x.key === (e.target as HTMLSelectElement).value);
+      const fid = f.id;
+      store.commit(() => {
+        const ff = store.fields.find((x) => x.id === fid);
+        if (!ff) return;
+        for (const x of store.fields) if (x.name === ff.name && x.type === ff.type) x.showIf = o ? { field: o.field, value: o.value } : undefined;
+      });
+    } }, h('option', { value: '', selected: !cur }, 'Always visible'), ...opts.map((o) => h('option', { value: o.key, selected: o.key === cur }, `Only if ${o.label}`)));
+    wrap.append(this.row('Show', sel));
+    if (!opts.length) wrap.append(h('p.hint', {}, 'Add a checkbox, radio group or dropdown to show this field only when needed.'));
+    else wrap.append(h('p.hint', {}, 'Hidden fields appear as soon as the condition is met (Adobe Acrobat and Reader).'));
   }
 
   /** Update values without rebuilding (e.g. while moving); focused inputs are left untouched. */

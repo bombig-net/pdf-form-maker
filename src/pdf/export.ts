@@ -10,7 +10,7 @@ import { parseTag } from './detect';
 import { effectiveColor } from '../util/color';
 import { sortForTabOrder } from '../util/tabOrder';
 import { locale, type LocaleFormat } from '../util/locale';
-import { buttonScript, calcScript, conditionScripts } from './logic';
+import { buttonScript, calcScript, conditionMet, conditionScripts } from './logic';
 
 export interface ExportInput {
   docs: SourceDoc[];
@@ -284,6 +284,8 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
   const noStyle = { textColor: undefined, backgroundColor: undefined, borderColor: undefined, borderWidth: 0 };
 
   let fieldCount = 0;
+  /** Font of each text field and dropdown, to draw filled-in values with it. */
+  const fieldFonts = new Map<string, PDFFont>();
   const calcRefs: PDFRef[] = [];
   for (const [name, group] of groups) {
     const f0 = group[0];
@@ -292,6 +294,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
       if (f0.type === 'text' || f0.type === 'area') {
         const tf = form.createTextField(name);
         const { font, res } = await getFont(f0);
+        fieldFonts.set(name, font);
         tf.acroField.setDefaultAppearance(`/${res} ${f0.fontSize || 0} Tf ${fmtColor(color)} rg`);
         if (f0.type === 'area') tf.enableMultiline(); else tf.disableMultiline();
         tf.setAlignment(f0.align === 'center' ? TextAlignment.Center : f0.align === 'right' ? TextAlignment.Right : TextAlignment.Left);
@@ -323,6 +326,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
       } else if (f0.type === 'dropdown') {
         const dd = form.createDropdown(name);
         const { font, res } = await getFont(f0);
+        fieldFonts.set(name, font);
         const opts = [...new Set((f0.choices ?? []).map((c) => cleanForFont(font, c).trim()).filter(Boolean))];
         if (opts.length) dd.setOptions(opts);
         if (f0.required) dd.enableRequired();
@@ -359,6 +363,25 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         setCaption(rg, 'l');
         finalizeDA(rg.acroField, `/ZaDb 0 Tf ${fmtColor(color)} rg`);
         setTooltip(rg.acroField.dict, f0.tooltip);
+      } else if (f0.type === 'signature') {
+        // Signature field (/FT /Sig): Acrobat and Reader let people sign here
+        const ctx = base.context;
+        const fieldRef = ctx.nextRef();
+        const kids: PDFRef[] = [];
+        for (const f of group) {
+          const page = pageObj.get(f.pageId)!;
+          const r = f.rect;
+          const ap = ctx.register(ctx.stream('', { Type: 'XObject', Subtype: 'Form', BBox: [0, 0, r.w, r.h] }));
+          const widget = ctx.register(ctx.obj({
+            Type: 'Annot', Subtype: 'Widget', Rect: [r.x, r.y, r.x + r.w, r.y + r.h], F: 4, P: page.ref, Parent: fieldRef, AP: { N: ap },
+          }));
+          page.node.addAnnot(widget);
+          kids.push(widget);
+        }
+        const dict = ctx.obj({ FT: 'Sig', T: PDFHexString.fromText(name), Kids: kids, Ff: f0.required ? 2 : 0 });
+        setTooltip(dict, f0.tooltip);
+        ctx.assign(fieldRef, dict);
+        form.acroForm.addField(fieldRef);
       } else if (f0.type === 'reset') {
         for (const f of group) {
           const btn = form.createButton(group.length > 1 ? `${name}_${fieldCount}` : name);
@@ -419,6 +442,9 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
     } catch { warnings.push(`The visibility rule for \u201c${ctrl}\u201d could not be added.`); }
   }
 
+  // Filled-in copy: values from test mode, conditional fields shown or removed accordingly
+  if (options.values || options.flatten) fillAndFlatten(form, placed, groups, fieldFonts, options, warnings);
+
   // 5) Tab order: sort widgets on each page from top left to bottom right
   pages.forEach((pr) => {
     const page = pageObj.get(pr.id)!;
@@ -428,6 +454,61 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
   base.setProducer('PDF Form Maker');
   const bytes = await base.save({ updateFieldAppearances: false, useObjectStreams: true });
   return { bytes, warnings, fieldCount };
+}
+
+/**
+ * Writes values into the fields (as typed in test mode) and, with flatten, bakes them into the page.
+ * Conditional fields whose condition is met become visible; when flattening, the others and all
+ * buttons and signature fields are removed, so the result is a plain printable PDF.
+ */
+function fillAndFlatten(form: ReturnType<PDFDocument['getForm']>, placed: Field[], groups: Map<string, Field[]>, fonts: Map<string, PDFFont>, options: ExportOptions, warnings: string[]) {
+  const values = options.values ?? {};
+  const value = (n: string) => values[n];
+  for (const [name, group] of groups) {
+    const f0 = group[0];
+    const v = value(f0.name);
+    try {
+      if (f0.type === 'text' || f0.type === 'area') {
+        const tf = form.getTextField(name);
+        const font = fonts.get(name);
+        let text = typeof v === 'string' ? v : '';
+        if (font) text = cleanForFont(font, text);
+        if (f0.maxLength > 0) text = text.slice(0, f0.maxLength);
+        // Empty fields lose their gray ghost text in a filled-in copy
+        if (text || options.flatten) { tf.setText(text || undefined); if (font) tf.updateAppearances(font); }
+      } else if (f0.type === 'dropdown' && typeof v === 'string' && v) {
+        const dd = form.getDropdown(name);
+        dd.select(v);
+        const font = fonts.get(name);
+        if (font) dd.updateAppearances(font);
+      } else if (f0.type === 'check' && v === true) {
+        form.getCheckBox(name).check();
+      } else if (f0.type === 'radio' && typeof v === 'string' && v) {
+        form.getRadioGroup(name).select(sanitizeName(v));
+      }
+    } catch { warnings.push(`The value of \u201c${name}\u201d could not be filled in.`); }
+  }
+  // Conditional fields: visible when the condition is met by the filled-in values
+  for (const f of placed) {
+    if (!f.showIf?.field) continue;
+    try {
+      const field = form.getField(sanitizeName(f.name));
+      if (conditionMet(f, value)) {
+        for (const w of field.acroField.getWidgets()) {
+          const fl = w.dict.get(N('F'));
+          if (fl instanceof PDFNumber) w.dict.set(N('F'), PDFNumber.of(fl.asNumber() & ~2));
+        }
+      } else if (options.flatten) form.removeField(field);
+    } catch { /* already removed */ }
+  }
+  if (!options.flatten) return;
+  for (const field of form.getFields()) {
+    const ft = field.acroField.dict.lookup(N('FT'));
+    const isButton = field instanceof PDFButton;
+    if (isButton || (ft instanceof PDFName && ft.decodeText() === 'Sig')) form.removeField(field);
+  }
+  form.acroForm.dict.delete(N('CO'));
+  form.flatten({ updateFieldAppearances: false });
 }
 
 function cleanForFont(font: PDFFont, text: string): string {

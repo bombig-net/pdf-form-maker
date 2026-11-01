@@ -34,7 +34,9 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
   for (const f of fields) {
     const r = rectToScreen(g, f.rect);
     // Cover text that is hidden on export here as well (background color of the template)
-    const cover = (f.hideText || f.extraHide.length) && f.bgColor ? `;--cover:${toHex(f.bgColor)}` : '';
+    // Checkboxes and radios keep the printed box or circle visible; tag text next to them is covered separately
+    const mark = f.type === 'check' || f.type === 'radio';
+    const cover = (f.hideText || (f.extraHide.length && !mark)) && f.bgColor ? `;--cover:${toHex(f.bgColor)}` : '';
     const box = h('div.test-field', { 'data-type': f.type, 'data-fid': f.id, class: cover ? 'covered' : undefined, style: `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px${cover}` });
     const color = toHex(f.type === 'reset' ? effectiveColor({ ...f, bgColor: f.buttonBg }) : effectiveColor(f));
     const autoSize = f.type === 'area' ? 10 * g.scale : Math.min(r.height * 0.62, 14 * g.scale);
@@ -109,7 +111,8 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
     if (f.bgColor) for (const x of f.extraHide) {
       const inside = x.x >= f.rect.x && x.y >= f.rect.y && x.x + x.w <= f.rect.x + f.rect.w && x.y + x.h <= f.rect.y + f.rect.h;
       if (inside) continue;
-      const c = rectToScreen(g, x);
+      // 1 pt of air: character widths are estimated, so the last glyph would otherwise peek out
+      const c = rectToScreen(g, { x: x.x - 1, y: x.y - 1, w: x.w + 2, h: x.h + 2 });
       overlay.prepend(h('div.test-cover', { 'aria-hidden': 'true', style: `left:${c.left}px;top:${c.top}px;width:${c.width}px;height:${c.height}px;background:${toHex(f.bgColor)}` }));
     }
   }
@@ -132,7 +135,8 @@ function refreshLogic() {
   for (const f of calcs) document.querySelectorAll<HTMLInputElement>(`[data-fname="${CSS.escape(f.name)}"]`).forEach((el) => { el.value = String(values.get(f.name) ?? ''); });
   for (const f of store.fields) {
     const box = document.querySelector<HTMLElement>(`.test-field[data-fid="${CSS.escape(f.id)}"]`);
-    if (box) box.hidden = !conditionMet(f, (n) => values.get(n));
+    // Hidden fields keep covering the text underneath (e.g. the tag), like the export hides it
+    if (box) box.classList.toggle('cond-hidden', !conditionMet(f, (n) => values.get(n)));
   }
 }
 

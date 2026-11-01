@@ -2,14 +2,14 @@ import type { Field, FieldType, PageAnalysis, Rect, RGB, TextOpRecord, TextItemL
 import { bboxToRect, rectContainsPoint, uid } from '../util/geom';
 
 /* ------------------------------------------------------------------ */
-/* Namenskonvention                                                    */
+/* Naming convention                                                   */
 /* ------------------------------------------------------------------ */
 
 export interface ParsedTag { type: Exclude<FieldType, 'reset'>; name: string; radioValue: string }
 
 const TYPE_MAP: Record<string, ParsedTag['type']> = { text: 'text', check: 'check', checkbox: 'check', radio: 'radio', area: 'area', textarea: 'area' };
 
-/** Erkennt "[Form_TYP_Name]" (Klammern optional, z. B. bei Ebenennamen). */
+/** Recognizes "[Form_TYPE_Name]" (brackets optional, e.g. in layer names). */
 export function parseTag(raw: string): ParsedTag | null {
   const m = /^\s*\[?\s*Form_(Text|Checkbox|Check|Radio|Textarea|Area)_(.+?)\s*\]?\s*$/i.exec(raw);
   if (!m) return null;
@@ -29,7 +29,7 @@ function buildTag(kind: string, rest: string): ParsedTag | null {
 const TAG_IN_TEXT = /\[\s*Form_(Text|Checkbox|Check|Radio|Textarea|Area)_([^\]\s][^\]]*?)\s*\]/gi;
 
 /* ------------------------------------------------------------------ */
-/* Feld-Fabrik                                                         */
+/* Field factory                                                       */
 /* ------------------------------------------------------------------ */
 
 export function newField(type: FieldType, pageId: string, rect: Rect, name = ''): Field {
@@ -40,14 +40,14 @@ export function newField(type: FieldType, pageId: string, rect: Rect, name = '')
     color: [0, 0, 0], autoContrast: true, bgColor: null,
     align: 'left', required: false, maxLength: 0, format: 'none',
     placeholder: '', hideText: false, tooltip: '',
-    label: type === 'reset' ? 'Formular zurücksetzen' : '',
+    label: type === 'reset' ? 'Reset form' : '',
     buttonBg: [0.92, 0.92, 0.92],
     source: 'manual', extraHide: [],
   };
 }
 
 /* ------------------------------------------------------------------ */
-/* Schrift-Zuordnung                                                   */
+/* Font mapping                                                        */
 /* ------------------------------------------------------------------ */
 
 export function mapFont(baseFont: string): { family: 'Helvetica' | 'Times' | 'Courier'; bold: boolean; italic: boolean } {
@@ -61,7 +61,7 @@ export function mapFont(baseFont: string): { family: 'Helvetica' | 'Times' | 'Co
 }
 
 /* ------------------------------------------------------------------ */
-/* Text-Zeilen aus pdf.js-Items (für Tags, Platzhalter, Labels)        */
+/* Text lines from pdf.js items (for tags, placeholders, labels)       */
 /* ------------------------------------------------------------------ */
 
 interface CharPos { x0: number; x1: number; y: number; h: number }
@@ -104,7 +104,7 @@ function charsBox(chars: (CharPos | null)[]): Rect | null {
 }
 
 /* ------------------------------------------------------------------ */
-/* Hauptfunktion                                                       */
+/* Main function                                                       */
 /* ------------------------------------------------------------------ */
 
 const area = (r: Rect) => r.w * r.h;
@@ -121,11 +121,11 @@ export function detectPageFields(a: PageAnalysis, pageId: string): Field[] {
   const lines = buildLines(a.texts);
   const tagBoxes: Rect[] = [];
 
-  // 1) Ebenen (Optional Content Groups) mit Namenskonvention
+  // 1) Layers (optional content groups) following the naming convention
   for (const [layerName, boxes] of Object.entries(a.ocBoxes)) {
     const tag = parseTag(layerName);
     if (!tag || !boxes.length) continue;
-    // Getrennte Objekte gleicher Ebene: nicht überlappende Boxen als eigene Felder? -> eine Box je Abschnitt, überlappende zusammenfassen
+    // Separate objects on the same layer: one box per section, overlapping boxes are merged
     const merged = mergeBoxes(boxes.map(bboxToRect));
     merged.forEach((rect, idx) => {
       const f = newField(tag.type, pageId, rect, tag.name);
@@ -135,7 +135,7 @@ export function detectPageFields(a: PageAnalysis, pageId: string): Field[] {
     });
   }
 
-  // 2) Text-Tags "[Form_Text_Name]" im Dokument
+  // 2) Text tags "[Form_Text_Name]" in the document
   for (const line of lines) {
     TAG_IN_TEXT.lastIndex = 0;
     let m: RegExpExecArray | null;
@@ -145,7 +145,7 @@ export function detectPageFields(a: PageAnalysis, pageId: string): Field[] {
       const box = charsBox(line.chars.slice(m.index, m.index + m[0].length));
       if (!box) continue;
       tagBoxes.push(box);
-      // Bereits über Ebene erkannt?
+      // Already detected via a layer?
       if (out.some((f) => f.name === tag.name && (tag.type !== 'radio' || f.radioValue === tag.radioValue) && overlap(f.rect, box) > 0)) {
         const f = out.find((ff) => ff.name === tag.name && overlap(ff.rect, box) > 0)!;
         f.extraHide.push(box);
@@ -156,7 +156,7 @@ export function detectPageFields(a: PageAnalysis, pageId: string): Field[] {
       if (tag.type === 'check' || tag.type === 'radio') {
         rect = smallestPath(a, (r) => rectContainsPoint(r, startX, midY, 0.5) && r.w < 80 && r.h < 80 && r.w / r.h > 0.6 && r.w / r.h < 1.7, pageArea);
         if (!rect) {
-          // Kästchen links neben dem Tag
+          // Box to the left of the tag
           const cands = a.paths.map((p) => bboxToRect(p.bbox)).filter((r) => r.w >= 4 && r.h >= 4 && r.w < 60 && r.h < 60 && r.w / r.h > 0.6 && r.w / r.h < 1.7
             && r.x + r.w <= box.x + 1 && box.x - (r.x + r.w) < box.h * 3 && midY >= r.y - box.h * 0.3 && midY <= r.y + r.h + box.h * 0.3);
           rect = cands.length ? cands.sort((p, q) => (box.x - (p.x + p.w)) - (box.x - (q.x + q.w)))[0] : null;
@@ -173,11 +173,11 @@ export function detectPageFields(a: PageAnalysis, pageId: string): Field[] {
     }
   }
 
-  // 3) Bereits vorhandene Formularfelder übernehmen
+  // 3) Keep existing form fields
   for (const w of a.widgets) {
     if (w.kind === 'other') continue;
     const type: FieldType = w.kind === 'button' ? 'reset' : w.kind;
-    if (w.kind === 'button') continue; // Buttons nicht übernehmen (Aktionen unbekannt)
+    if (w.kind === 'button') continue; // don't import buttons (actions unknown)
     const rect = bboxToRect(w.rect);
     if (out.some((f) => f.name === w.name && overlap(f.rect, rect) > area(rect) * 0.5)) continue;
     const f = newField(type, pageId, rect, w.name);
@@ -187,14 +187,14 @@ export function detectPageFields(a: PageAnalysis, pageId: string): Field[] {
     out.push(f);
   }
 
-  // Radio ohne Wert durchnummerieren
+  // Number radio buttons without a value
   const radioCount: Record<string, number> = {};
   for (const f of out) if (f.type === 'radio') {
     radioCount[f.name] = (radioCount[f.name] ?? 0) + 1;
     if (!f.radioValue) f.radioValue = `Option${radioCount[f.name]}`;
   }
 
-  // Anreichern: Schrift, Farbe, Hintergrund, Platzhalter, Tooltip
+  // Enrich: font, color, background, placeholder, tooltip
   for (const f of out) enrichField(f, a, lines, tagBoxes);
   return out;
 }
@@ -231,7 +231,7 @@ export function enrichField(f: Field, a: PageAnalysis, lines: Line[], tagBoxes: 
   const inside = a.textOps.filter((op) => op.tr !== 3 && rectContainsPoint(r, op.x + 0.5, op.y + op.size * 0.3, 0.5));
   const insideNonTag = inside.filter((op) => !isTag(op));
 
-  // Platzhalter-Text (sichtbarer Text im Feld, ohne Tag)
+  // Placeholder text (visible text inside the field, excluding the tag)
   if (f.type === 'text' || f.type === 'area') {
     const parts: string[] = [];
     for (const line of lines) {
@@ -249,11 +249,11 @@ export function enrichField(f: Field, a: PageAnalysis, lines: Line[], tagBoxes: 
     const ph = parts.join(f.type === 'area' ? '\n' : ' ').trim();
     if (ph) { f.placeholder = ph; f.hideText = true; }
   } else if (insideNonTag.length && f.source !== 'import') {
-    // Text in Checkbox/Radio (z. B. "x") ausblenden
+    // Hide text inside a checkbox/radio (e.g. "x")
     f.hideText = true;
   }
 
-  // Schrift: zuerst Text im Feld, dann Tag-Text, dann Beschriftung daneben/darüber
+  // Font: text inside the field first, then the tag text, then the label next to/above it
   let src: TextOpRecord | undefined = insideNonTag[0] ?? inside[0];
   let fromLabel = false;
   if (!src) {
@@ -262,19 +262,19 @@ export function enrichField(f: Field, a: PageAnalysis, lines: Line[], tagBoxes: 
   }
   if (src) {
     const mf = mapFont(src.baseFont);
-    // Beschriftungen sind oft fett – Eingaben übernehmen nur Schriftfamilie, Größe und Farbe.
+    // Labels are often bold – inputs only take over font family, size and color.
     f.fontFamily = mf.family; f.bold = fromLabel ? false : mf.bold; f.italic = fromLabel ? false : mf.italic;
     if (f.type === 'text' || f.type === 'area') {
       let size = Math.round(src.size * 2) / 2;
       if (f.type === 'text' && size > r.h * 0.85) size = Math.max(4, Math.floor(r.h * 0.75 * 2) / 2);
       f.fontSize = Math.min(72, Math.max(4, size));
     }
-    // Platzhaltertext ist meist bewusst grau – Eingabefarbe dann von der Beschriftung (oder Schwarz) nehmen
+    // Placeholder text is usually intentionally gray – take the input color from the label (or black)
     const colorSrc = f.placeholder && !fromLabel ? nearestLabelOp(a.textOps, r) : src;
     f.color = colorSrc?.color ? ([...colorSrc.color] as RGB) : [0, 0, 0];
   }
 
-  // Hintergrundfarbe unter dem Feld (oberstes gefülltes Objekt am Mittelpunkt)
+  // Background color under the field (topmost filled object at the center)
   const [cx, cy] = center(r);
   let bg: RGB = [1, 1, 1];
   for (const p of a.paths) {
@@ -284,7 +284,7 @@ export function enrichField(f: Field, a: PageAnalysis, lines: Line[], tagBoxes: 
   }
   f.bgColor = bg;
 
-  // Tooltip aus Beschriftung
+  // Tooltip from the label
   const label = nearestLabelText(lines, r, tagBoxes);
   f.tooltip = label || f.name.replace(/_/g, ' ');
 }
@@ -297,9 +297,9 @@ function nearestLabelOp(ops: TextOpRecord[], r: Rect): TextOpRecord | undefined 
     const left = Math.min(op.x, op.x2), right = Math.max(op.x, op.x2);
     const midY = (top + bottom) / 2;
     let d = Infinity;
-    // links daneben
+    // to the left
     if (right <= r.x + 2 && midY >= r.y - 2 && midY <= r.y + r.h + 2) d = r.x - right;
-    // darüber
+    // above
     else if (bottom >= r.y + r.h - 2 && bottom - (r.y + r.h) < Math.max(op.size * 2.5, 24) && right > r.x - 4 && left < r.x + r.w) d = bottom - (r.y + r.h) + Math.max(0, left - r.x) * 0.1;
     if (d < bd && d < 200) { bd = d; best = op; }
   }
@@ -317,14 +317,14 @@ function nearestLabelText(lines: Line[], r: Rect, tagBoxes: Rect[]): string {
     const mid = ly + line.h * 0.3;
     if (lx1 <= r.x + 2 && mid >= r.y - 2 && mid <= r.y + r.h + 2) d = r.x - lx1;
     else if (ly >= r.y + r.h - 2 && ly - (r.y + r.h) < Math.max(line.h * 2.5, 24) && lx1 > r.x - 4 && lx0 < r.x + r.w) d = ly - (r.y + r.h);
-    else if (lx0 >= r.x + r.w - 2 && lx0 - (r.x + r.w) < 40 && mid >= r.y - 2 && mid <= r.y + r.h + 2) d = (lx0 - (r.x + r.w)) + 5; // rechts (Checkbox-Label)
+    else if (lx0 >= r.x + r.w - 2 && lx0 - (r.x + r.w) < 40 && mid >= r.y - 2 && mid <= r.y + r.h + 2) d = (lx0 - (r.x + r.w)) + 5; // to the right (checkbox label)
     if (d < bd && d < 200) { bd = d; best = t; }
   }
   return best.replace(/[:*]+\s*$/, '').slice(0, 120);
 }
 
 /* ------------------------------------------------------------------ */
-/* Namensgleiche Felder über mehrere Seiten                            */
+/* Fields with the same name on multiple pages                         */
 /* ------------------------------------------------------------------ */
 
 export function crossPageDuplicates(fields: Field[]): string[] {

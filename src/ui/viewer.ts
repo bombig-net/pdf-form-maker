@@ -12,7 +12,7 @@ const SNAP_PX = 6;
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
 type Handle = (typeof HANDLES)[number];
 
-const TYPE_LABEL: Record<FieldType, string> = { text: 'Text', area: 'Text area', check: 'Checkbox', radio: 'Radio', dropdown: 'Dropdown', reset: 'Button' };
+const TYPE_LABEL: Record<FieldType, string> = { text: 'Text', area: 'Text area', check: 'Checkbox', radio: 'Radio', dropdown: 'Dropdown', reset: 'Button', signature: 'Signature' };
 
 interface PageView {
   page: PageRef;
@@ -442,7 +442,7 @@ export class Viewer {
 
   private autoName(type: FieldType, pageId: string): string {
     if (type === 'radio' && this.lastRadio && this.lastRadio.pageId === pageId && store.fields.some((f) => f.name === this.lastRadio!.name && f.type === 'radio')) return this.lastRadio.name;
-    const base = { text: 'TextField', area: 'TextArea', check: 'Checkbox', radio: 'Choice', dropdown: 'Dropdown', reset: 'Button' }[type];
+    const base = { text: 'TextField', area: 'TextArea', check: 'Checkbox', radio: 'Choice', dropdown: 'Dropdown', reset: 'Button', signature: 'Signature' }[type];
     let n = 1;
     while (store.fields.some((f) => f.name === `${base}_${n}`)) n++;
     return `${base}_${n}`;
@@ -588,6 +588,7 @@ function defaultSize(type: FieldType): { w: number; h: number } {
     case 'area': return { w: 240, h: 80 };
     case 'check': case 'radio': return { w: 12, h: 12 };
     case 'reset': return { w: 130, h: 24 };
+    case 'signature': return { w: 180, h: 32 };
     default: return { w: 170, h: 22 };
   }
 }

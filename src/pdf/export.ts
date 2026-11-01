@@ -286,6 +286,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         if (f0.type === 'area') tf.enableMultiline(); else tf.disableMultiline();
         tf.setAlignment(f0.align === 'center' ? TextAlignment.Center : f0.align === 'right' ? TextAlignment.Right : TextAlignment.Left);
         if (f0.maxLength > 0) tf.setMaxLength(f0.maxLength);
+        if (f0.comb && f0.type === 'text' && f0.maxLength > 0) tf.enableCombing();
         if (f0.required) tf.enableRequired();
         if (f0.format !== 'none' && f0.type === 'text') tf.disableRichFormatting();
         for (const f of group) {
@@ -304,6 +305,18 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         finalizeDA(tf.acroField, `/${res} ${f0.fontSize || 0} Tf ${fmtColor(color)} rg`);
         setTooltip(tf.acroField.dict, f0.tooltip);
         setActions(base, tf.acroField.dict, buildScripts(f0, color, locale(options.locale)));
+      } else if (f0.type === 'dropdown') {
+        const dd = form.createDropdown(name);
+        const { font, res } = await getFont(f0);
+        const opts = [...new Set((f0.choices ?? []).map((c) => cleanForFont(font, c).trim()).filter(Boolean))];
+        if (opts.length) dd.setOptions(opts);
+        if (f0.required) dd.enableRequired();
+        for (const f of group) {
+          const rot = pageRot.get(f.pageId)!;
+          dd.addToPage(pageObj.get(f.pageId)!, { ...rectOpts(f.rect, rot), ...noStyle, font, rotate: degrees(rot) });
+        }
+        finalizeDA(dd.acroField, `/${res} ${f0.fontSize || 0} Tf ${fmtColor(color)} rg`);
+        setTooltip(dd.acroField.dict, f0.tooltip);
       } else if (f0.type === 'check') {
         const cb = form.createCheckBox(name);
         cb.acroField.setDefaultAppearance(`/ZaDb 0 Tf ${fmtColor(color)} rg`);

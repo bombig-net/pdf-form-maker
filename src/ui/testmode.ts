@@ -4,6 +4,7 @@ import { h } from './dom';
 import { rectToScreen, type ViewGeom } from '../util/geom';
 import { effectiveColor, toHex } from '../util/color';
 import { sortForTabOrder } from '../util/tabOrder';
+import { locale, datePattern, normalizeDate, parseNumber } from '../util/locale';
 
 /** Test mode input values, keyed by field name (fields with the same name share a value). */
 const values = new Map<string, string | boolean>();
@@ -44,7 +45,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
     if (f.type === 'text' || f.type === 'area') {
       const el = f.type === 'area'
         ? h<HTMLTextAreaElement>('textarea', {})
-        : h<HTMLInputElement>('input', { type: 'text', inputmode: f.format === 'number' || f.format === 'zip' ? 'decimal' : f.format === 'phone' ? 'tel' : f.format === 'email' ? 'email' : undefined });
+        : h<HTMLInputElement>('input', { type: 'text', inputmode: f.format === 'number' || (f.format === 'zip' && store.options.locale !== 'uk') ? 'decimal' : f.format === 'phone' ? 'tel' : f.format === 'email' ? 'email' : undefined });
       el.value = String(values.get(f.name) ?? '');
       el.placeholder = f.placeholder;
       el.tabIndex = +tab;
@@ -56,7 +57,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       el.addEventListener('beforeinput', (e) => {
         const ev = e as InputEvent;
         if (!ev.data) return;
-        const allowed = { phone: /^[0-9+()\/\-\s]*$/, zip: /^[0-9]*$/, number: /^[0-9.,\-]*$/, date: /^[0-9.]*$/ }[f.format as 'phone'];
+        const allowed = { phone: /^[0-9+()\/\-\s]*$/, zip: new RegExp(locale(store.options.locale).zipKeys), number: /^[0-9.,'\-\s]*$/, date: /^[0-9./-]*$/ }[f.format as 'phone'];
         if (allowed && !allowed.test(ev.data)) e.preventDefault();
       });
       el.addEventListener('input', () => sync(f.name, el.value, el));
@@ -94,37 +95,34 @@ function sync(name: string, v: string | boolean, from: HTMLElement) {
   });
 }
 
-const MSG: Record<string, string> = {
+const message = (format: string): string => ({
   email: 'Please enter a valid email address.',
   phone: 'Please enter a valid phone number.',
   zip: 'Please enter a valid postal code.',
-  date: 'Please enter a date as DD.MM.YYYY.',
+  date: `Please enter a date as ${datePattern(locale(store.options.locale))}.`,
   number: 'Please enter a number.',
-};
+} as Record<string, string>)[format] ?? 'Invalid input.';
 
 /** Validates and formats like the Acrobat scripts in the export. */
 function validate(f: Field, el: HTMLInputElement | HTMLTextAreaElement) {
   let v = el.value.trim();
   let ok = true;
+  const loc = locale(store.options.locale);
   if (v) {
     switch (f.format) {
       case 'email': ok = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); break;
       case 'phone': ok = /^[+]?[0-9()\/\-\s]{5,}$/.test(v); break;
-      case 'zip': ok = /^[0-9]{4,5}$/.test(v); break;
+      case 'zip': ok = new RegExp(loc.zip).test(v); break;
       case 'date': {
-        const m = /^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/.exec(v);
-        if (m) {
-          const y = m[3].length === 2 ? 2000 + +m[3] : +m[3];
-          const d = new Date(y, +m[2] - 1, +m[1]);
-          ok = d.getDate() === +m[1] && d.getMonth() === +m[2] - 1;
-          if (ok) v = `${m[1].padStart(2, '0')}.${m[2].padStart(2, '0')}.${y}`;
-        } else ok = false;
+        const d = normalizeDate(v, loc);
+        ok = d !== null;
+        if (d) v = d;
         break;
       }
       case 'number': {
-        const n = Number(v.includes(',') ? v.replace(/\./g, '').replace(',', '.') : v);
+        const n = parseNumber(v, loc);
         ok = !isNaN(n);
-        if (ok) v = n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (ok) v = n.toLocaleString(loc.intl, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         break;
       }
     }
@@ -133,7 +131,7 @@ function validate(f: Field, el: HTMLInputElement | HTMLTextAreaElement) {
   const box = el.parentElement!;
   box.classList.toggle('invalid', !ok);
   box.querySelector('.test-msg')?.remove();
-  if (!ok) box.append(h('span.test-msg', { role: 'alert' }, MSG[f.format] ?? 'Invalid input.'));
+  if (!ok) box.append(h('span.test-msg', { role: 'alert' }, message(f.format)));
 }
 
 /* ------------------------------------------------------------------ */

@@ -97,7 +97,7 @@ body { font-feature-settings: 'cv11', 'ss01'; letter-spacing: -0.005em; }
 .tool[aria-pressed='true'] { background: var(--panel-2); box-shadow: none; }
 .bar { background: var(--panel); }
 .mark .ink { display: none; }
-.mark::before { content: ''; width: 16px; height: 16px; border-radius: 4px; background: var(--brand); display: inline-block; }
+.mark::before { content: ''; width: 20px; height: 20px; display: inline-block; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121212'/%3E%3Cpath d='M18 12h19l11 11v29H18z' fill='%23262626'/%3E%3Cpath d='M37 12v11h11z' fill='%233ecf8e'/%3E%3Crect x='23' y='30' width='20' height='7' rx='2' fill='%233ecf8e'/%3E%3Crect x='23' y='41' width='13' height='4' rx='2' fill='%233a3a3a'/%3E%3C/svg%3E") center / contain no-repeat; }
 .chip[aria-checked='true'] { background: var(--brand-bg); color: var(--brand-fg); border-color: var(--brand-border); }
 input[role='switch']:checked { background: var(--brand); }
 .thumb-fields:not(:empty) { background: var(--brand-bg); color: var(--brand-fg); }
@@ -110,9 +110,7 @@ input[role='switch']:checked { background: var(--brand); }
   background: var(--panel); border-right: 1px solid var(--line);
 }
 .side-logo { display: flex; align-items: center; gap: 10px; padding: 6px 8px 18px; font-weight: 600; font-size: 15px; }
-.logo-mark { width: 22px; height: 22px; border-radius: 6px; background: var(--brand); position: relative; }
-.logo-mark::after { content: ''; position: absolute; inset: 6px 5px; border: 2px solid var(--brand-fg); border-width: 2px 0; }
-:root[data-theme='dark'] .logo-mark::after { border-color: #052e1a; }
+.logo-mark { width: 24px; height: 24px; flex: none; border-radius: 5px; box-shadow: 0 0 0 1px var(--line); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121212'/%3E%3Cpath d='M18 12h19l11 11v29H18z' fill='%23262626'/%3E%3Cpath d='M37 12v11h11z' fill='%233ecf8e'/%3E%3Crect x='23' y='30' width='20' height='7' rx='2' fill='%233ecf8e'/%3E%3Crect x='23' y='41' width='13' height='4' rx='2' fill='%233a3a3a'/%3E%3C/svg%3E") center / contain no-repeat; }
 .side-nav { display: flex; flex-direction: column; gap: 2px; }
 .side-link {
   display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: 6px;

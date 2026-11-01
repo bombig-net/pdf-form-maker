@@ -1,9 +1,9 @@
-/* Erweiterungen: Mehrfachauswahl, Testmodus, Preflight, Hilfe, Telefon-Layout */
+/* Extensions: multi-selection, test mode, preflight, help, phone layout */
 
-/* ---------- Auswahlrahmen ---------- */
+/* ---------- Selection rectangle ---------- */
 .marquee { position: absolute; border: 1px solid var(--accent); background: var(--accent-soft); pointer-events: none; z-index: 5; }
 
-/* ---------- Seiten-Panels im Inspector ---------- */
+/* ---------- Side panels in the inspector ---------- */
 .side-panel { padding: 16px 18px 40px; }
 .side-panel[hidden] { display: none; }
 .inspector.multi .inspector-body,
@@ -13,7 +13,7 @@
 .arrange-row .sep { width: 1px; height: 20px; background: var(--line); margin: 0 6px; }
 .btn.small { height: 28px; padding: 0 10px; font-size: 12.5px; }
 
-/* ---------- Testmodus ---------- */
+/* ---------- Test mode ---------- */
 .test-toggle { margin-left: 8px; }
 .test-toggle[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .editor.testing .tools { opacity: 0.35; pointer-events: none; }
@@ -55,7 +55,7 @@
 .pf-text small { color: var(--ink-3); }
 .preflight .modal-actions { gap: 8px; }
 
-/* ---------- Hilfe bei leerem Dokument ---------- */
+/* ---------- Help for empty documents ---------- */
 .empty-help {
   position: sticky; top: 16px; z-index: 6; margin: 16px auto 0; width: min(560px, calc(100% - 32px));
   background: var(--paper); color: var(--ink); border-radius: 10px; padding: 18px 20px;
@@ -67,7 +67,7 @@
 .empty-help li { margin-bottom: 4px; }
 .empty-help-actions { display: flex; gap: 8px; margin-top: 12px; }
 
-/* ---------- Telefon: Eigenschaften als Bottom Sheet ---------- */
+/* ---------- Phone: properties as a bottom sheet ---------- */
 @media (max-width: 899px) {
   .test-toggle span { display: none; }
   .test-toggle { width: 38px; padding: 0; margin-left: 4px; }

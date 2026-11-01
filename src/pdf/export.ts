@@ -23,7 +23,7 @@ const enc = new TextEncoder();
 const N = (s: string) => PDFName.of(s);
 
 /* ------------------------------------------------------------------ */
-/* Text ausblenden (Content-Stream umschreiben)                        */
+/* Hiding text (rewriting content streams)                             */
 /* ------------------------------------------------------------------ */
 
 export function opsToHide(ops: TextOpRecord[], rects: Rect[]): TextOpRecord[] {
@@ -98,7 +98,7 @@ function stripWidgets(lib: PDFDocument, page: PDFPage) {
 }
 
 /* ------------------------------------------------------------------ */
-/* JavaScript für Formate & Platzhalter                                */
+/* JavaScript for formats & placeholders                               */
 /* ------------------------------------------------------------------ */
 
 const jsStr = (s: string) => JSON.stringify(s);
@@ -116,15 +116,15 @@ export function buildScripts(f: Field, color: RGB): { K?: string; F?: string; V?
       fmt = 'AFNumber_Format(2, 2, 0, 0, "", true);';
       break;
     case 'email':
-      out.V = 'if (event.value && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(event.value)) { app.alert("Bitte eine gültige E-Mail-Adresse eingeben."); event.rc = false; }';
+      out.V = 'if (event.value && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(event.value)) { app.alert("Please enter a valid email address."); event.rc = false; }';
       break;
     case 'phone':
       out.K = 'if (!event.willCommit && event.change && !/^[0-9+()\\/\\-\\s]*$/.test(event.change)) event.rc = false;';
-      out.V = 'if (event.value && !/^[+]?[0-9()\\/\\-\\s]{5,}$/.test(event.value)) { app.alert("Bitte eine gültige Telefonnummer eingeben."); event.rc = false; }';
+      out.V = 'if (event.value && !/^[+]?[0-9()\\/\\-\\s]{5,}$/.test(event.value)) { app.alert("Please enter a valid phone number."); event.rc = false; }';
       break;
     case 'zip':
       out.K = 'if (!event.willCommit && event.change && !/^[0-9]*$/.test(event.change)) event.rc = false;';
-      out.V = 'if (event.value && !/^[0-9]{4,5}$/.test(event.value)) { app.alert("Bitte eine gültige Postleitzahl eingeben."); event.rc = false; }';
+      out.V = 'if (event.value && !/^[0-9]{4,5}$/.test(event.value)) { app.alert("Please enter a valid postal code."); event.rc = false; }';
       break;
   }
   if (f.placeholder && (f.type === 'text' || f.type === 'area')) {
@@ -154,16 +154,16 @@ const STD: Record<string, { font: StandardFonts; res: string }> = {
 };
 
 function sanitizeName(n: string): string {
-  return (n || 'Feld').replace(/[.\s]+/g, '_').replace(/[()<>[\]{}/%#]/g, '').slice(0, 120) || 'Feld';
+  return (n || 'Field').replace(/[.\s]+/g, '_').replace(/[()<>[\]{}/%#]/g, '').slice(0, 120) || 'Field';
 }
 
 export async function exportPdf(input: ExportInput): Promise<ExportResult> {
   const { docs, pages, fields, options } = input;
   const warnings: string[] = [];
-  if (!pages.length) throw new Error('Das Dokument enthält keine Seiten.');
+  if (!pages.length) throw new Error('The document has no pages.');
   const docById = new Map(docs.map((d) => [d.id, d]));
 
-  // 1) Quellen frisch laden
+  // 1) Load the sources fresh
   const libs = new Map<string, PDFDocument>();
   for (const id of new Set(pages.map((p) => p.docId))) {
     const d = docById.get(id)!;
@@ -172,7 +172,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
   const base = libs.get(pages[0].docId)!;
   base.registerFontkit(fontkit);
 
-  // 2) Text ausblenden + alte Widgets entfernen
+  // 2) Hide text + remove old widgets
   const fieldsByPage = new Map<string, Field[]>();
   for (const f of fields) { const l = fieldsByPage.get(f.pageId) ?? []; l.push(f); fieldsByPage.set(f.pageId, l); }
   for (const pr of pages) {
@@ -190,7 +190,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
   }
   for (const lib of libs.values()) lib.catalog.delete(N('AcroForm'));
 
-  // 3) Seiten zusammenstellen (Reihenfolge, Drehung, Zusammenführen)
+  // 3) Assemble pages (order, rotation, merging)
   const finalPages: PDFPage[] = new Array(pages.length);
   const baseDocId = pages[0].docId;
   pages.forEach((pr, i) => { if (pr.docId === baseDocId) finalPages[i] = base.getPage(pr.srcIndex); });
@@ -202,7 +202,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
   }
   for (let i = base.getPageCount() - 1; i >= 0; i--) base.removePage(i);
   finalPages.forEach((p) => base.addPage(p));
-  // Feld-Drehung folgt der ursprünglichen Seitendrehung: dreht der Nutzer die Seite, drehen sich Felder mit dem Inhalt mit.
+  // Widget rotation follows the original page rotation: when the user rotates a page, fields rotate with the content.
   const pageRot = new Map<string, number>();
   const viewRot = new Map<string, number>();
   pages.forEach((pr, i) => {
@@ -214,10 +214,10 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
   });
   const pageObj = new Map(pages.map((pr, i) => [pr.id, finalPages[i]]));
 
-  // Platzhalter-Ebenen ausblenden
+  // Hide placeholder layers
   if (options.hidePlaceholderLayers) hideFormLayers(base);
 
-  // 4) Formularfelder
+  // 4) Form fields
   const form = base.getForm();
   const drFonts = ensureDRFonts(base);
   const fontCache = new Map<string, { font: PDFFont; res: string }>();
@@ -231,7 +231,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         try {
           const font = await base.embedFont(cf.bytes, { subset: false });
           e = { font, res: 'CF' + (fontCache.size + 1) };
-        } catch { warnings.push(`Schrift „${cf.name}“ konnte nicht eingebettet werden – Helvetica verwendet.`); }
+        } catch { warnings.push(`Font “${cf.name}” could not be embedded – Helvetica was used instead.`); }
       }
     }
     if (!e) {
@@ -245,16 +245,16 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
   const zadb = await base.embedFont(StandardFonts.ZapfDingbats);
   drFonts.set(N('ZaDb'), zadb.ref);
 
-  // Gruppieren nach Name (gleiche Namen = synchronisierte Felder)
+  // Group by name (same name = synchronized fields)
   const placed = fields.filter((f) => pageObj.has(f.pageId));
   const groups = new Map<string, Field[]>();
   let resetNo = 0;
   for (const f of placed) {
-    let name = f.type === 'reset' ? sanitizeName(f.name || `Zuruecksetzen_${++resetNo}`) : sanitizeName(f.name);
+    let name = f.type === 'reset' ? sanitizeName(f.name || `Reset_${++resetNo}`) : sanitizeName(f.name);
     let g = groups.get(name);
     if (g && (g[0].type !== f.type || f.type === 'reset')) {
       const alt = `${name}_${f.type}`;
-      if (f.type !== 'reset') warnings.push(`„${name}“ wird für unterschiedliche Feldtypen verwendet – umbenannt in „${alt}“.`);
+      if (f.type !== 'reset') warnings.push(`“${name}” is used for different field types – renamed to “${alt}”.`);
       name = f.type === 'reset' ? `${name}_${++resetNo}` : alt;
       g = groups.get(name);
     }
@@ -291,7 +291,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
           const rot = pageRot.get(f.pageId)!;
           tf.addToPage(pageObj.get(f.pageId)!, { ...rectOpts(f.rect, rot), ...noStyle, font, rotate: degrees(rot) });
         }
-        // Platzhalter als Ghost-Text in der Darstellung (für Viewer ohne JavaScript)
+        // Placeholder as ghost text in the appearance (for viewers without JavaScript)
         const ph = f0.placeholder ? cleanForFont(font, f0.type === 'area' ? f0.placeholder : f0.placeholder.replace(/\s*\n\s*/g, ' ')) : '';
         if (ph) {
           const text = f0.maxLength > 0 ? ph.slice(0, f0.maxLength) : ph;
@@ -336,7 +336,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
           const { font, res } = await getFont(f);
           btn.acroField.setDefaultAppearance(`/${res} ${f.fontSize || 0} Tf`);
           const rot = pageRot.get(f.pageId)!;
-          btn.addToPage(cleanForFont(font, f.label || 'Zurücksetzen'), pageObj.get(f.pageId)!, {
+          btn.addToPage(cleanForFont(font, f.label || 'Reset'), pageObj.get(f.pageId)!, {
             ...rectOpts(f.rect, rot), font, rotate: degrees(rot),
             textColor: rgb(...effectiveColor({ ...f, bgColor: f.buttonBg })), backgroundColor: rgb(...f.buttonBg), borderColor: undefined, borderWidth: 0,
           });
@@ -350,11 +350,11 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
       }
       fieldCount += group.length;
     } catch (e) {
-      warnings.push(`Feld „${name}“ konnte nicht angelegt werden: ${(e as Error).message}`);
+      warnings.push(`Field “${name}” could not be created: ${(e as Error).message}`);
     }
   }
 
-  // 5) Tab-Reihenfolge: Widgets je Seite von links oben nach rechts unten sortieren
+  // 5) Tab order: sort widgets on each page from top left to bottom right
   pages.forEach((pr) => {
     const page = pageObj.get(pr.id)!;
     sortAnnotsForTabOrder(base, page, viewRot.get(pr.id)!);
@@ -393,7 +393,7 @@ function ensureDRFonts(doc: PDFDocument): PDFDict {
   return fonts as PDFDict;
 }
 
-/** pdf-lib überschreibt /DA mit internen Fontnamen – wir setzen den sauberen Wert (Font aus /DR, Größe 0 = auto). */
+/** pdf-lib overwrites /DA with internal font names – we set the clean value (font from /DR, size 0 = auto). */
 function finalizeDA(acro: { setDefaultAppearance(da: string): void; getWidgets(): { dict: PDFDict }[] }, da: string) {
   acro.setDefaultAppearance(da);
   for (const w of acro.getWidgets()) w.dict.delete(N('DA'));

@@ -14,13 +14,17 @@ const escapeReplacementChar = (): Plugin => ({
 });
 
 // "npm run build"        -> regular web app (dist/), e.g. for GitHub Pages
-// "npm run build:single" -> a single HTML file (dist-single/), e.g. for sharing
+// "npm run build:single" -> the app as a single HTML file (dist-single/app/index.html), e.g. for sharing
 export default defineConfig(({ mode }) => ({
   base: './',
   build: {
     target: 'es2020',
     outDir: mode === 'single' ? 'dist-single' : 'dist',
     chunkSizeWarningLimit: 4000,
+    // Landing page at the root, the app under app/. The single-file build contains only the app.
+    rollupOptions: {
+      input: mode === 'single' ? { app: 'app/index.html' } : { landing: 'index.html', app: 'app/index.html' },
+    },
   },
   plugins: mode === 'single' ? [escapeReplacementChar(), viteSingleFile()] : [],
   test: { testTimeout: 30000, include: ['test/**/*.test.ts'] },

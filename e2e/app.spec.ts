@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const sample = (name: string) => `src/assets/${name}`;
 
 async function openFile(page: Page, file: string) {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.locator('.home-main input[type=file]').first().setInputFiles(file);
   await expect(page.locator('.editor')).toBeVisible();
 }
@@ -25,7 +25,7 @@ async function openSection(page: Page, id: string) {
 }
 
 test('opens the sample and detects its fields', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await expect(page.getByRole('heading', { name: 'Make any PDF fillable' })).toBeVisible();
   await page.locator('.side-link', { hasText: 'Open sample' }).click();
   await page.locator('dialog.modal .btn.primary').click();
@@ -190,4 +190,20 @@ test('previews placeholders and buttons in the editor and updates them live', as
   await expect(page.locator('.field .fp')).toHaveCount(0);
   await page.keyboard.press('p');
   await expect(first.locator('.fp-text')).toHaveText('Your first name');
+});
+
+test('landing page explains the app and leads to it', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Turn any layout into a fillable PDF form.');
+  // The demo turns the tags into fields and calculates like the PDF
+  await page.getByRole('radio', { name: 'Fillable PDF' }).click();
+  const qty = page.locator('[data-calc="qty"]');
+  await qty.fill('3');
+  await expect(page.locator('[data-calc="total"]')).toHaveText('74,70');
+  // Every call to action opens the app
+  const ctas = page.getByRole('link', { name: 'Open the app' });
+  await expect(ctas).toHaveCount(3);
+  await ctas.first().click();
+  await expect(page).toHaveURL(/\/app\/$/);
+  await expect(page.getByRole('heading', { name: 'Make any PDF fillable' })).toBeVisible();
 });

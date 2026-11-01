@@ -3,18 +3,160 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content="Turn ordinary PDFs into fillable PDF forms right in your browser. No upload." />
+    <title>PDF Form Maker – Turn any layout into a fillable PDF form</title>
+    <meta name="description" content="Type a tag like [Form_Text_Name] into your layout, drop the PDF in and get a fillable PDF form with validation, calculations and buttons. Runs in your browser, nothing is uploaded." />
+    <link rel="canonical" href="https://bombig-net.github.io/pdf-form-maker/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="PDF Form Maker – Turn any layout into a fillable PDF form" />
+    <meta property="og:description" content="Placeholders in your Affinity, InDesign, Canva or Word layout become real form fields. Runs in your browser, nothing is uploaded." />
+    <meta property="og:url" content="https://bombig-net.github.io/pdf-form-maker/" />
+    <meta property="og:image" content="https://bombig-net.github.io/pdf-form-maker/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
     <meta name="theme-color" content="#fcfcfc" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121212'/%3E%3Cpath transform='matrix(0.56132 0 0 0.56132 4.06 2.998)' fill='%23a7f3d0' d='M75.061,50.921l-32.981,35.66c-0.347,0.377 -0.808,0.628 -1.313,0.718c-0.504,0.087 -1.022,0.01 -1.476,-0.227c-0.458,-0.234 -0.822,-0.611 -1.045,-1.076c-0.224,-0.464 -0.294,-0.989 -0.194,-1.496l4.316,-21.792l-16.972,-6.43c-0.364,-0.137 -0.688,-0.364 -0.945,-0.658c-0.257,-0.297 -0.434,-0.651 -0.524,-1.035c-0.087,-0.381 -0.08,-0.778 0.023,-1.159c0.104,-0.377 0.297,-0.725 0.564,-1.009l32.981,-35.664c0.347,-0.374 0.808,-0.628 1.313,-0.715c0.504,-0.09 1.022,-0.01 1.476,0.224c0.458,0.237 0.822,0.615 1.045,1.079c0.224,0.461 0.294,0.989 0.197,1.493l-4.329,21.815l16.968,6.423c0.361,0.137 0.685,0.364 0.939,0.658c0.254,0.294 0.434,0.648 0.521,1.029c0.087,0.381 0.08,0.775 -0.02,1.152c-0.1,0.377 -0.291,0.725 -0.554,1.009l0.01,0Z'/%3E%3C/svg%3E" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="apple-mobile-web-app-title" content="Form Maker" />
-    <title>PDF Form Maker – Make PDFs fillable</title>
+    <script type="application/ld+json">
+      {"@context": "https://schema.org", "@type": "WebApplication", "name": "PDF Form Maker", "url": "https://bombig-net.github.io/pdf-form-maker/", "applicationCategory": "DesignApplication", "operatingSystem": "Any (web browser)", "description": "Turns ordinary PDFs into fillable PDF forms in the browser.", "creator": {"@type": "Organization", "name": "bombig.net", "url": "https://bombig.net"}}
+    </script>
   </head>
   <body>
-    <div id="app"></div>
-    <noscript>This app requires JavaScript.</noscript>
-    <script type="module" src="/src/main.ts"></script>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <a class="brand" href="./" aria-label="PDF Form Maker, home"><span class="mark" aria-hidden="true"></span>PDF Form Maker</a>
+      <nav class="top-nav" aria-label="Sections">
+        <a href="#how">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <a class="cta small" href="app/">Open the app</a>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <h1 id="hero-title">Turn any layout into a fillable PDF form.</h1>
+          <p class="lead">Type a tag like <code class="tag">[Form_Text_Name]</code> where a field should go, export the PDF from your layout app and drop it in. PDF Form Maker turns the tags into real form fields, with the font, colors and spacing of your design.</p>
+          <div class="hero-actions">
+            <a class="cta" href="app/">Open the app</a>
+            <ul class="facts">
+              <li>Nothing is uploaded</li>
+              <li>No account</li>
+              <li>Ready for Acrobat Reader</li>
+            </ul>
+          </div>
+        </div>
+
+        <figure class="demo" aria-label="Example: an order form as a layout with tags, and as a fillable PDF">
+          <div class="demo-switch" role="radiogroup" aria-label="Show">
+            <button type="button" role="radio" aria-checked="true" data-show="layout">Your layout</button>
+            <button type="button" role="radio" aria-checked="false" data-show="form">Fillable PDF</button>
+          </div>
+          <div class="sheet" data-state="layout">
+            <p class="sheet-title">Order</p>
+            <div class="row two">
+              <label class="slot"><span class="lbl">Name</span><span class="box"><code class="t">[Form_Text_Name]</code><input type="text" placeholder="Your full name" tabindex="-1" autocomplete="off" /></span></label>
+              <label class="slot"><span class="lbl">Email</span><span class="box"><code class="t">[Form_Text_Email]</code><input type="email" placeholder="name@example.com" tabindex="-1" autocomplete="off" /></span></label>
+            </div>
+            <div class="row three">
+              <label class="slot"><span class="lbl">Quantity</span><span class="box"><code class="t">[Form_Text_Qty]</code><input type="text" inputmode="decimal" value="2" tabindex="-1" data-calc="qty" autocomplete="off" /></span></label>
+              <label class="slot"><span class="lbl">Price</span><span class="box"><code class="t">[Form_Text_Price]</code><input type="text" inputmode="decimal" value="24,90" tabindex="-1" data-calc="price" autocomplete="off" /></span></label>
+              <label class="slot"><span class="lbl">Total</span><span class="box calc"><code class="t">[Form_Text_Total]</code><output data-calc="total">49,80</output></span></label>
+            </div>
+            <div class="row">
+              <label class="slot"><span class="lbl">Delivery</span><span class="box"><code class="t">[Form_Dropdown_Delivery]</code><select tabindex="-1"><option>Standard</option><option>Express</option><option>Pick-up</option></select></span></label>
+            </div>
+            <label class="check-row"><span class="tick"><input type="checkbox" tabindex="-1" /></span><code class="t">[Form_Check_GiftWrap]</code><span class="opt">Gift wrap</span></label>
+          </div>
+          <figcaption class="demo-note" aria-live="polite">These are the tags in your layout. Switch to <em>Fillable PDF</em> to see the form they become.</figcaption>
+        </figure>
+      </section>
+
+      <section id="how" class="block" aria-labelledby="how-title">
+        <h2 id="how-title">How it works</h2>
+        <ol class="steps">
+          <li>
+            <h3>Mark the fields in your layout</h3>
+            <p>Draw a box where a field should go and type a tag inside it, like <code class="tag">[Form_Text_FirstName]</code> or <code class="tag">[Form_Check_Terms]</code>. Gray text in the box becomes the placeholder.</p>
+          </li>
+          <li>
+            <h3>Drop the PDF into the app</h3>
+            <p>The fields appear in their place, named and styled. Adjust them, add calculations or buttons, and fill in the form in test mode.</p>
+          </li>
+          <li>
+            <h3>Export the fillable PDF</h3>
+            <p>A preflight check points out overlaps and small fonts. The exported file is a standard PDF form that people fill in with Acrobat Reader.</p>
+          </li>
+        </ol>
+        <p class="aside">No tags in your PDF? The app finds empty boxes, lines and checkboxes on its own and suggests fields for them.</p>
+      </section>
+
+      <section id="features" class="block" aria-labelledby="features-title">
+        <h2 id="features-title">What your forms can do</h2>
+        <dl class="features">
+          <div><dt>Checked inputs</dt><dd>Email, date, phone, number and postal code fields check what people type, in the formats of Europe, Switzerland, the UK or the US.</dd></div>
+          <div><dt>Calculations</dt><dd>Sums, products and formulas like <code>Quantity * Price * 1.19</code> update while the form is filled in.</dd></div>
+          <div><dt>Fields that appear when needed</dt><dd>Show a field only when a box is checked or an option is chosen, for example a message field for gift wrap.</dd></div>
+          <div><dt>Dropdowns, checkboxes, radio buttons</dt><dd>Plus comb fields with one box per character for postal codes or bank numbers.</dd></div>
+          <div><dt>Buttons</dt><dd>Send the filled form by email, print it, save it as a PDF or clear it.</dd></div>
+          <div><dt>Your typography</dt><dd>One font, size and color for all fields, taken from your layout, with your own fonts if you like.</dd></div>
+          <div><dt>Test before you send</dt><dd>Fill in the form inside the app with the real tab order, then export.</dd></div>
+          <div><dt>Pages and projects</dt><dd>Merge PDFs, rotate and reorder pages, and pick up where you left off. Forms are saved in your browser and as project files.</dd></div>
+        </dl>
+      </section>
+
+      <div class="block duo">
+      <section class="privacy" aria-labelledby="privacy-title">
+        <h2 id="privacy-title">Your files stay on your computer</h2>
+        <p>PDF Form Maker runs entirely in your browser. Your PDFs are never uploaded, because there is no server to upload them to. That makes it a good fit for contracts, applications and anything with personal data.</p>
+      </section>
+
+      <section class="apps" aria-labelledby="apps-title">
+        <h2 id="apps-title">Works with the tools you already use</h2>
+        <p>Any app that exports a PDF: Affinity Publisher, InDesign, Illustrator, Canva, Word, Pages and LibreOffice. If your app exports layers, you can also put the tag in a layer name instead.</p>
+      </section>
+      </div>
+
+      <section id="faq" class="block" aria-labelledby="faq-title">
+        <h2 id="faq-title">Questions</h2>
+        <div class="faq">
+          <details>
+            <summary>Which PDF readers can fill in the forms?</summary>
+            <p>Every common PDF reader shows the fields and lets people type. Checked inputs, calculations, fields that appear when needed and the buttons use Acrobat JavaScript, so they work in Adobe Acrobat and the free Acrobat Reader on desktop and mobile. Browsers and macOS Preview show the fields without these extras.</p>
+          </details>
+          <details>
+            <summary>Do I need an account?</summary>
+            <p>No. Open the app and drop in a PDF. Your recent forms are kept in your browser on this device.</p>
+          </details>
+          <details>
+            <summary>Can I use a scanned form?</summary>
+            <p>Yes, but scans contain no text or shapes to detect, so you draw the fields yourself. That takes a few minutes for a one-page form.</p>
+          </details>
+          <details>
+            <summary>Can I change a form I already exported?</summary>
+            <p>Yes. Open the exported PDF again and its text fields, checkboxes and radio buttons are kept, ready to be moved, renamed or extended. To keep every setting, such as calculations and buttons, also save a project file from the app.</p>
+          </details>
+          <details>
+            <summary>Will the form look like my design?</summary>
+            <p>The fields sit exactly on your boxes and take over your font, size and color. Tags and gray hint text are hidden in the export, so the printed layout stays as you designed it.</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="closing" aria-labelledby="closing-title">
+        <h2 id="closing-title">Make your first form now.</h2>
+        <a class="cta" href="app/">Open the app</a>
+        <p class="closing-note">Want to try it without your own file? The app has a sample form.</p>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <a class="made-by" href="https://bombig.net" rel="noopener">Made by bombig.net</a>
+      <a href="https://github.com/bombig-net/pdf-form-maker" rel="noopener">Source on GitHub</a>
+    </footer>
+
+    <script type="module" src="/src/landing/main.ts"></script>
   </body>
 </html>

@@ -32,17 +32,17 @@ function buildStart(): HTMLElement {
     h('span.crop.tl'), h('span.crop.tr'), h('span.crop.bl'), h('span.crop.br'),
     h('div.sheet-inner', {},
       h('p.mark', {}, h('span.ink.c'), h('span.ink.m'), h('span.ink.y'), h('span.ink.k'), h('span.mark-name', {}, 'PDF Form Maker')),
-      h('h1', { id: 'start-title' }, 'Aus deinem Affinity-Layout wird ein ausfüllbares PDF-Formular.'),
-      h('p.lead', {}, 'Zieh die exportierte PDF hierher. Benannte Platzhalter werden zu echten Formularfeldern, die du danach anpassen, ergänzen und prüfen kannst.'),
+      h('h1', { id: 'start-title' }, 'Aus deiner PDF wird ein ausfüllbares Formular.'),
+      h('p.lead', {}, 'Zieh eine PDF hierher. Benannte Platzhalter werden automatisch zu echten Formularfeldern. Danach kannst du sie anpassen, ergänzen und prüfen oder Felder direkt auf der Seite aufziehen.'),
       h('div.start-actions', {}, pick, sample),
       h('p.privacy', {}, 'Die Datei bleibt auf deinem Gerät. Nichts wird hochgeladen.'),
       fileIn));
 
   const legend = h('aside.legend', { 'aria-labelledby': 'legend-title' },
     h('h2', { id: 'legend-title' }, 'So benennst du Platzhalter'),
-    h('p', {}, 'Zeichne in Affinity ein Rechteck dort, wo das Feld hin soll, und gib ihm einen dieser Namen:'),
+    h('p', {}, 'Zeichne in deinem Layoutprogramm ein Rechteck dort, wo das Feld hin soll, und schreib einen dieser Tags als Text hinein:'),
     h('ul.tag-list', {}, ...TAGS.map(([t, code, desc]) => h('li', { 'data-type': t }, h('span.dot'), h('code', {}, code), h('span', {}, desc)))),
-    h('p.small', {}, 'Liegt das Rechteck auf einer eigenen Ebene mit diesem Namen, wird es erkannt, sofern dein PDF-Export Ebenen enthält. Sicher funktioniert es immer, wenn du den Namen als Text in das Rechteck schreibst: Der Text wird beim Export automatisch entfernt.'));
+    h('p.small', {}, 'Der Tag wird beim Export automatisch entfernt. Alternativ kannst du das Rechteck auf eine Ebene mit diesem Namen legen, sofern dein Programm Ebenen in die PDF exportiert.'));
 
   const start = h('main.start', {}, sheet, legend);
   bindDrop(start, 'replace');

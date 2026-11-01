@@ -12,7 +12,7 @@ export async function filesFromList(list: FileList | File[]): Promise<InputFile[
   const out: InputFile[] = [];
   for (const f of Array.from(list)) {
     if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') {
-      toast(`„${f.name}“ ist keine PDF-Datei. Exportiere dein Layout in Affinity als PDF.`, 'error', 6000);
+      toast(`„${f.name}“ ist keine PDF-Datei. Exportiere dein Dokument zuerst als PDF.`, 'error', 6000);
       continue;
     }
     out.push({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) });

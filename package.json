@@ -14,7 +14,7 @@
     "preview": "vite preview",
     "pretest": "npm run sample",
     "test": "vitest run",
-    "sample": "node scripts/make-samples.mjs src/assets"
+    "sample": "node scripts/make-samples.mjs src/assets && node scripts/make-icons.mjs public"
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.2.8",

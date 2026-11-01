@@ -6,3 +6,5 @@ dist-single/
 coverage/
 # generated during build/test (scripts/make-samples.mjs)
 src/assets/*.pdf
+# generated during build (scripts/make-icons.mjs)
+public/*.png

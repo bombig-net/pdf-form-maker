@@ -11,7 +11,7 @@ const SNAP_PX = 6;
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
 type Handle = (typeof HANDLES)[number];
 
-const TYPE_LABEL: Record<FieldType, string> = { text: 'Text', area: 'Textbereich', check: 'Checkbox', radio: 'Radio', reset: 'Reset' };
+const TYPE_LABEL: Record<FieldType, string> = { text: 'Text', area: 'Text area', check: 'Checkbox', radio: 'Radio', reset: 'Reset' };
 
 interface PageView {
   page: PageRef;
@@ -27,7 +27,7 @@ interface SnapSet { xs: number[]; ys: number[] }
 
 interface DragState {
   kind: 'move' | 'resize' | 'draw' | 'marquee';
-  /** Weitere mitbewegte Felder bei Mehrfachauswahl */
+  /** Other fields moved along with a multi-selection */
   group?: { id: string; el: HTMLElement; orig: { left: number; top: number; width: number; height: number } }[];
   additive?: boolean;
   pointerId: number;
@@ -84,7 +84,7 @@ export class Viewer {
   }
 
   /* ---------------------------------------------------------------- */
-  /* Aufbau & Rendering                                               */
+  /* Layout & rendering                                               */
   /* ---------------------------------------------------------------- */
 
   rebuild() {
@@ -103,7 +103,7 @@ export class Viewer {
       }
       v.page = p;
       v.wrap.dataset.num = String(i + 1);
-      v.wrap.setAttribute('aria-label', `Seite ${i + 1}`);
+      v.wrap.setAttribute('aria-label', `Page ${i + 1}`);
       if (this.stack.children[i] !== v.wrap) this.stack.insertBefore(v.wrap, this.stack.children[i] ?? null);
     });
     this.layout();
@@ -159,7 +159,7 @@ export class Viewer {
   drawAllOverlays() { for (const v of this.views.values()) this.drawOverlay(v); }
 
   private drawOverlay(v: PageView) {
-    if (this.drag && this.drag.pageId === v.page.id) return; // während Drag nicht neu zeichnen
+    if (this.drag && this.drag.pageId === v.page.id) return; // don't redraw while dragging
     const g = this.geom(v.page);
     const fields = store.fields.filter((f) => f.pageId === v.page.id);
     if (store.testMode) { renderTestOverlay(v.overlay, fields, g); return; }
@@ -169,7 +169,7 @@ export class Viewer {
     for (const f of fields) {
       const r = rectToScreen(g, f.rect);
       const tabIdx = order.indexOf(f);
-      const tag = f.type === 'radio' ? `${f.name} · ${f.radioValue}` : f.type === 'reset' ? f.label || 'Zurücksetzen' : f.name;
+      const tag = f.type === 'radio' ? `${f.name} · ${f.radioValue}` : f.type === 'reset' ? f.label || 'Reset' : f.name;
       const el = h('div.field', {
         'data-id': f.id, 'data-type': f.type, role: 'button', tabindex: '-1',
         'aria-label': `${TYPE_LABEL[f.type]}: ${tag}`,
@@ -211,7 +211,7 @@ export class Viewer {
   }
 
   /* ---------------------------------------------------------------- */
-  /* Interaktion                                                      */
+  /* Interaction                                                      */
   /* ---------------------------------------------------------------- */
 
   private bindOverlay(v: PageView) {
@@ -228,7 +228,7 @@ export class Viewer {
 
   private local(e: PointerEvent, v: PageView): [number, number] {
     const b = v.overlay.getBoundingClientRect();
-    const sx = b.width ? v.overlay.offsetWidth / b.width : 1; // während Pinch skaliert
+    const sx = b.width ? v.overlay.offsetWidth / b.width : 1; // scaled during pinch
     return [(e.clientX - b.left) * sx, (e.clientY - b.top) * sx];
   }
 
@@ -249,7 +249,7 @@ export class Viewer {
       return;
     }
     if (!fieldEl) {
-      // Auswahlrahmen (nur Maus/Stift, auf Touch bleibt das Scrollen erhalten)
+      // Selection rectangle (mouse/pen only; touch keeps scrolling)
       if (e.pointerType === 'touch') { store.select(null); return; }
       e.preventDefault();
       const el = h('div.marquee', { style: `left:${x}px;top:${y}px;width:0;height:0` });
@@ -412,7 +412,7 @@ export class Viewer {
       const label = f.tooltip !== auto.replace(/_/g, ' ') ? f.tooltip : '';
       if (!label) f.tooltip = '';
       const slug = slugify(label);
-      // Name aus der Beschriftung neben/über dem Feld ableiten
+      // Derive the name from the label next to/above the field
       if (slug && type === 'radio') {
         let v = slug, k = 2;
         while (store.fields.some((x) => x.type === 'radio' && x.name === f.name && x.radioValue === v)) v = `${slug}_${k++}`;
@@ -426,7 +426,7 @@ export class Viewer {
 
   private autoName(type: FieldType, pageId: string): string {
     if (type === 'radio' && this.lastRadio && this.lastRadio.pageId === pageId && store.fields.some((f) => f.name === this.lastRadio!.name && f.type === 'radio')) return this.lastRadio.name;
-    const base = { text: 'Textfeld', area: 'Textbereich', check: 'Checkbox', radio: 'Auswahl', reset: 'Zuruecksetzen' }[type];
+    const base = { text: 'TextField', area: 'TextArea', check: 'Checkbox', radio: 'Choice', reset: 'Reset' }[type];
     let n = 1;
     while (store.fields.some((f) => f.name === `${base}_${n}`)) n++;
     return `${base}_${n}`;
@@ -466,7 +466,7 @@ export class Viewer {
     }
   }
 
-  /** Felder per Tastatur verschieben (Pfeiltasten), dx/dy in Bildschirm-Richtung, Einheit pt. */
+  /** Move fields with the keyboard (arrow keys); dx/dy in screen direction, unit pt. */
   nudge(ids: string[], dx: number, dy: number) {
     store.commit(() => {
       for (const id of ids) {
@@ -481,7 +481,7 @@ export class Viewer {
   }
 
   /* ---------------------------------------------------------------- */
-  /* Zoom: Strg+Mausrad, Trackpad (Safari), Pinch auf Touch           */
+  /* Zoom: Ctrl+wheel, trackpad (Safari), pinch on touch              */
   /* ---------------------------------------------------------------- */
 
   zoomAt(newZoom: number, clientX?: number, clientY?: number) {
@@ -514,18 +514,18 @@ export class Viewer {
       this.zoomAt(store.zoom * f, e.clientX, e.clientY);
     }, { passive: false });
 
-    // Safari (macOS) Trackpad-Gesten
+    // Safari (macOS) trackpad gestures
     let gStart = 1;
     this.el.addEventListener('gesturestart', (e) => { e.preventDefault(); gStart = store.zoom; });
     this.el.addEventListener('gesturechange', (e) => {
       e.preventDefault();
-      if (this.pinch || 'ontouchstart' in window) return; // Touch-Geräte nutzen den Pinch oben
+      if (this.pinch || 'ontouchstart' in window) return; // touch devices use the pinch handler below
       const ge = e as unknown as { scale: number; clientX: number; clientY: number };
       this.zoomAt(gStart * ge.scale, ge.clientX, ge.clientY);
     });
     this.el.addEventListener('gestureend', (e) => e.preventDefault());
 
-    // Pinch-to-Zoom mit zwei Fingern (Touch-Events, damit iPad/iPhone zuverlässig funktionieren)
+    // Two-finger pinch-to-zoom (touch events, so iPad/iPhone work reliably)
     const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
     this.el.addEventListener('touchstart', (e) => {
       if (e.touches.length !== 2) return;
@@ -581,7 +581,7 @@ function roundRect(r: Rect): Rect {
   return { x: q(r.x), y: q(r.y), w: q(r.w), h: q(r.h) };
 }
 
-/** Beschriftung in einen gültigen Feldnamen umwandeln. */
+/** Turn a label into a valid field name. */
 export function slugify(label: string): string {
   return label.trim().replace(/[:*]+$/, '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '').slice(0, 40);
 }

@@ -1,6 +1,7 @@
 import { store } from '../state';
 import { analyzeDocument } from '../pdf/analyze';
-import type { CustomFont, Field, PageRef } from '../types';
+import type { CustomFont, Field, FormFont, PageRef } from '../types';
+import { defaultFormFont } from '../state';
 import { uid } from '../util/geom';
 import { toast } from './dom';
 import { saveFile } from './actions';
@@ -18,8 +19,9 @@ export interface Project {
   fields: Field[];
   customFonts: CustomFont[];
   locale?: string;
+  formFont?: FormFont;
 }
-export type ProjectSummary = Omit<Project, 'docs' | 'pages' | 'fields' | 'customFonts' | 'locale'>;
+export type ProjectSummary = Omit<Project, 'docs' | 'pages' | 'fields' | 'customFonts' | 'locale' | 'formFont'>;
 
 const DB = 'pdf-form-maker';
 const STORE = 'projects';
@@ -45,7 +47,7 @@ async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBReq
 export async function listProjects(): Promise<ProjectSummary[]> {
   try {
     const all = await tx<Project[]>('readonly', (s) => s.getAll());
-    return all.map(({ docs: _d, pages: _p, fields: _f, customFonts: _c, locale: _l, ...rest }) => rest).sort((a, b) => b.updatedAt - a.updatedAt);
+    return all.map(({ docs: _d, pages: _p, fields: _f, customFonts: _c, locale: _l, formFont: _ff, ...rest }) => rest).sort((a, b) => b.updatedAt - a.updatedAt);
   } catch { return []; }
 }
 export async function deleteProject(id: string) {
@@ -97,6 +99,7 @@ async function save() {
     fields: structuredClone(store.fields),
     customFonts: store.customFonts.map((f) => ({ ...f })),
     locale: store.options.locale,
+    formFont: store.options.formFont,
   };
   try {
     await tx('readwrite', (s) => s.put(project));
@@ -152,6 +155,8 @@ async function restore(p: Project): Promise<boolean> {
     store.customFonts = p.customFonts ?? [];
     store.fileName = p.name;
     if (p.locale) store.options.locale = p.locale;
+    // Forms saved before the form font existed keep their look
+    store.options.formFont = p.formFont ?? { ...defaultFormFont(), mode: 'layout' };
     currentId = p.id;
     projectKey = docKey();
     thumb = p.thumb;
@@ -193,6 +198,7 @@ export async function saveProjectFile() {
     name: store.fileName || 'Untitled',
     savedAt: new Date().toISOString(),
     locale: store.options.locale,
+    formFont: store.options.formFont,
     docs: store.docs.map((d) => ({ id: d.id, name: d.name, data: toBase64(d.bytes) })),
     pages: store.pages,
     fields: store.fields,
@@ -222,6 +228,7 @@ export async function openProjectFile(file: File): Promise<boolean> {
       fields: d.fields ?? [],
       customFonts: (d.customFonts ?? []).map((x: { id: string; name: string; data: string }) => ({ id: x.id, name: x.name, bytes: fromBase64(x.data) })),
       locale: d.locale,
+      formFont: d.formFont,
     };
     const ok = await restore(p);
     if (ok) setTimeout(() => { void flushSave(); }, 0);

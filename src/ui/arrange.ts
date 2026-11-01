@@ -101,7 +101,7 @@ export function mountMultiPanel(inspector: HTMLElement, viewer: Viewer) {
       return b;
     };
     const pages = new Set(sel.map((f) => f.pageId)).size;
-    const texty = sel.filter((f) => f.type === 'text' || f.type === 'area' || f.type === 'reset');
+    const texty = sel.filter((f) => f.type === 'text' || f.type === 'area' || f.type === 'dropdown' || f.type === 'reset');
     const sizes = new Set(texty.map((f) => f.fontSize));
     const colors = new Set(sel.map((f) => toHex(f.color)));
     const allReq = sel.every((f) => f.required);

@@ -32,7 +32,8 @@ export const icons = {
   check: svg('<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 12.5l2.5 2.5L16 9.5"/>'),
   radio: svg('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/>'),
   dropdown: svg('<rect x="3" y="7" width="18" height="10" rx="1.5"/><path d="M14 11l2 2 2-2"/>'),
-  reset: svg('<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/>'),
+  // Button tool (type 'reset' = button with an action): a button with a mouse pointer
+  reset: svg('<rect x="2.5" y="5" width="16" height="10" rx="5"/><path d="M14 12l0 9 2.4-2.3 1.7 3.4 1.7-.8-1.7-3.3h3.3z" fill="currentColor" stroke-width="1"/>'),
   undo: svg('<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>'),
   redo: svg('<path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>'),
   minus: svg('<path d="M5 12h14"/>'),

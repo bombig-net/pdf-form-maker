@@ -289,12 +289,12 @@ describe('Field suggestions without tags', () => {
       'area:Message',
       'check:I accept the terms',
       'check:Send me the newsletter',
+      'signature:Signature',
       'text:Company',
       'text:Email',
       'text:Full name',
       'text:Place, date',
       'text:Reference',
-      'text:Signature',
     ]);
     const email = s.find((f) => f.tooltip === 'Email')!;
     expect(email.placeholder).toBe('name@example.com');

@@ -179,6 +179,9 @@ test('previews placeholders and buttons in the editor and updates them live', as
   const button = page.locator('.field[data-type=reset]').last();
   await expect(button.locator('.fp-btn')).toHaveText('Reset form');
   await expect(button.locator('.fp')).toHaveCSS('background-color', 'rgb(235, 235, 235)');
+  // The button color fills the whole field, not just a strip
+  const [fieldBox, fpBox] = await Promise.all([button.boundingBox(), button.locator('.fp').boundingBox()]);
+  expect(Math.abs(fieldBox!.height - fpBox!.height)).toBeLessThan(1);
   await page.locator('input[name=label]').fill('Clear');
   await expect(button.locator('.fp-btn')).toHaveText('Clear');
   // P switches the preview off and on again

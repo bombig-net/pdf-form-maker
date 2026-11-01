@@ -103,7 +103,8 @@ export function previewContent(f: Field, look: FieldLook): HTMLElement {
     const first = (f.choices ?? []).find((c) => c.trim());
     if (first) fp.append(h('span.fp-text.dd', { style: textStyle('left') }, first));
   } else if (f.type === 'reset') {
-    fp.classList.add('btn');
+    // Not 'btn': that class belongs to the app's own buttons (fixed height)
+    fp.classList.add('fp-button');
     fp.style.background = toHex(f.buttonBg);
     fp.append(h('span.fp-btn', { style: `font:${look.font};color:${look.color}` }, f.label || 'Button'));
   } else {

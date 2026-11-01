@@ -122,3 +122,4 @@ textarea.choices:focus { outline: none; border-color: var(--accent); box-shadow:
 .formula-error { color: var(--danger); margin-top: -4px; }
 .test-field input.calc { background: color-mix(in srgb, var(--brand) 10%, transparent); cursor: default; }
 .test-field[hidden] { display: none; }
+.test-cover { position: absolute; pointer-events: none; }

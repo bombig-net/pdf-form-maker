@@ -58,7 +58,11 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       if (f.required) el.required = true;
       if (f.calc) { el.readOnly = true; el.classList.add('calc'); }
       Object.assign(el.style, { font, color, textAlign: f.align });
+      // Same inner distance as in Acrobat: its own margin of about 2 pt plus the form padding
+      const padPx = (2 + (store.options.formFont.padding ?? 0)) * g.scale;
+      el.style.padding = f.type === 'area' ? `${padPx}px` : `0 ${padPx}px`;
       if (f.type === 'text' && f.comb && f.maxLength > 0) {
+        el.style.padding = '';
         // One box per character: monospace font, spacing to the box width
         el.classList.add('comb');
         el.style.fontFamily = FONT_STACK.Courier;
@@ -81,7 +85,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       el.dataset.fname = f.name;
       el.setAttribute('aria-label', label);
       if (f.required) el.required = true;
-      Object.assign(el.style, { font, color });
+      Object.assign(el.style, { font, color, paddingLeft: `${(2 + (store.options.formFont.padding ?? 0)) * g.scale}px` });
       el.addEventListener('change', () => sync(f.name, el.value, el));
       box.append(el);
     } else if (f.type === 'check' || f.type === 'radio') {

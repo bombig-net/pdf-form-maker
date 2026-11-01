@@ -173,12 +173,18 @@ export class Viewer {
       const el = h('div.field', {
         'data-id': f.id, 'data-type': f.type, role: 'button', tabindex: '-1',
         'aria-label': `${TYPE_LABEL[f.type]}: ${tag}`,
-        class: f.comb && f.maxLength > 0 ? 'comb' : undefined,
+        // Comb boxes run along the text direction, also on rotated pages
+        class: f.comb && f.maxLength > 0 ? (g.rotation % 180 ? 'comb v' : 'comb') : undefined,
         style: `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px${f.comb && f.maxLength > 0 ? `;--cells:${f.maxLength}` : ''}`,
       },
         h('span.field-tag', {}, tag || TYPE_LABEL[f.type]),
         tabIdx >= 0 ? h('span.tab-badge', {}, String(tabIdx + 1)) : null,
+        f.calc || f.showIf?.field ? h('span.logic-badges', { 'aria-hidden': 'true' },
+          f.calc ? h('span.logic-badge', {}, 'fx') : null,
+          f.showIf?.field ? h('span.logic-badge.cond', {}, 'if') : null) : null,
       );
+      if (f.calc) el.title = 'Calculated field';
+      if (f.showIf?.field) el.title = `Visible only if ${f.showIf.field} ${f.showIf.value ? `= ${f.showIf.value}` : 'is checked'}`;
       if (f.required) el.classList.add('required');
       if (store.selection.has(f.id)) this.decorateSelected(el, single);
       v.overlay.append(el);

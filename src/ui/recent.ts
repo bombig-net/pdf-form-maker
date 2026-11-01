@@ -103,6 +103,8 @@ async function save() {
   };
   try {
     await tx('readwrite', (s) => s.put(project));
+    // Lets the editor show "Saved just now"
+    window.dispatchEvent(new CustomEvent('pfm-saved', { detail: project.updatedAt }));
     const all = await listProjects();
     for (const old of all.slice(MAX)) await deleteProject(old.id);
   } catch (e) {

@@ -24,10 +24,10 @@ const polygon = (pts) => (px, py) => {
 /** Shapes from back to front; `full` = square without rounded corners (iOS rounds the icon itself). */
 const shapes = (full) => [
   [full ? () => true : roundRect(0, 0, 64, 64, 14), hex('#121212')],
-  [polygon([[18, 12], [37, 12], [48, 23], [48, 52], [18, 52]]), hex('#262626')],
+  [polygon([[18, 12], [37, 12], [48, 23], [48, 52], [18, 52]]), hex('#404040')],
   [polygon([[37, 12], [37, 23], [48, 23]]), hex('#3ecf8e')],
   [roundRect(23, 30, 20, 7, 2), hex('#3ecf8e')],
-  [roundRect(23, 41, 13, 4, 2), hex('#3a3a3a')],
+  [roundRect(23, 41, 13, 4, 2), hex('#707070')],
 ];
 
 function render(size, full) {

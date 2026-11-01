@@ -56,6 +56,7 @@ const TOOLS: { t: Tool; label: string; key: string }[] = [
   { t: 'area', label: 'Text area', key: 'A' },
   { t: 'check', label: 'Checkbox', key: 'C' },
   { t: 'radio', label: 'Radio button', key: 'R' },
+  { t: 'dropdown', label: 'Dropdown', key: 'D' },
   { t: 'reset', label: 'Reset button', key: 'B' },
 ];
 

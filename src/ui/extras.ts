@@ -1,8 +1,9 @@
 import { store } from '../state';
 import type { Field, FormatKind } from '../types';
 import { newField } from '../pdf/detect';
+import { suggestFields } from '../pdf/suggest';
 import { toast } from './dom';
-import { uniqueName, type Viewer } from './viewer';
+import { uniqueName, slugify, type Viewer } from './viewer';
 
 interface Slot { name: string; placeholder: string; format: FormatKind; x: number; w: number; row: number }
 
@@ -42,4 +43,28 @@ export function insertAddressBlock(viewer: Viewer) {
   store.setSelection(created.map((f) => f.id));
   viewer.scrollToField(created[0].id);
   toast('Address block added. Drag it into place as a group.');
+}
+
+/**
+ * Looks for empty boxes, lines, underscores and checkbox glyphs on all pages and adds them as
+ * suggested fields (named after their labels). Everything is one undo step. Returns the number found.
+ */
+export function suggestAllFields(scrollTo?: (id: string) => void): number {
+  const created: Field[] = [];
+  const base: Record<string, string> = { text: 'TextField', area: 'TextArea', check: 'Checkbox' };
+  for (const p of store.pages) {
+    for (const f of suggestFields(store.analysis(p), p.id, [...store.fields, ...created])) {
+      let name = slugify(f.tooltip) || base[f.type] || 'Field';
+      const taken = (n: string) => store.fields.some((x) => x.name === n) || created.some((x) => x.name === n);
+      if (taken(name)) { let k = 2; while (taken(`${name}_${k}`)) k++; name = `${name}_${k}`; }
+      f.name = uniqueName(name);
+      created.push(f);
+    }
+  }
+  if (!created.length) { toast('No further fields found. You can draw fields with the tools above.', 'info', 5000); return 0; }
+  store.commit(() => { store.fields.push(...created); });
+  store.setSelection(created.map((f) => f.id));
+  scrollTo?.(created[0].id);
+  toast(`${created.length} ${created.length === 1 ? 'field' : 'fields'} suggested. Check them and delete what you don\u2019t need, or undo with \u2318/Ctrl Z.`, 'info', 7000);
+  return created.length;
 }

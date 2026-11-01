@@ -1,0 +1,118 @@
+import { store } from '../state';
+import { h, svg } from './dom';
+import { filesFromList, openPdfs } from './actions';
+import { listProjects, deleteProject, openProject, type ProjectSummary } from './recent';
+
+const I = {
+  home: svg('<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/>'),
+  file: svg('<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>'),
+  book: svg('<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/>'),
+  upload: svg('<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>', 22),
+  trash: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', 15),
+  lock: svg('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', 14),
+  plus: svg('<path d="M12 5v14M5 12h14"/>', 16),
+};
+
+const TAGS: [string, string, string][] = [
+  ['text', '[Form_Text_Name]', 'Text field'],
+  ['area', '[Form_Area_Message]', 'Multi-line text field'],
+  ['check', '[Form_Check_Terms]', 'Checkbox'],
+  ['radio', '[Form_Radio_Salutation_Ms]', 'Radio button: group, then value'],
+];
+
+type Theme = 'system' | 'light' | 'dark';
+export function applyTheme(t?: Theme) {
+  let theme: Theme = t ?? 'system';
+  if (!t) { try { theme = (localStorage.getItem('pfm-theme') as Theme) || 'system'; } catch { /* ignore */ } }
+  if (theme === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.dataset.theme = theme;
+  try { localStorage.setItem('pfm-theme', theme); } catch { /* ignore */ }
+  return theme;
+}
+
+function ago(ts: number): string {
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.round(s / 60); if (m < 60) return `${m} min ago`;
+  const hh = Math.round(m / 60); if (hh < 24) return `${hh} h ago`;
+  const d = Math.round(hh / 24); if (d < 7) return `${d} ${d === 1 ? 'day' : 'days'} ago`;
+  return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+export function buildHome(openSample: () => void): HTMLElement {
+  const fileIn = h<HTMLInputElement>('input', { type: 'file', accept: 'application/pdf,.pdf', hidden: true });
+  fileIn.addEventListener('change', async () => { if (fileIn.files?.length) await openPdfs(await filesFromList(fileIn.files), 'replace'); fileIn.value = ''; });
+  const pick = () => fileIn.click();
+
+  // Sidebar
+  const nav = (icon: string, label: string, on: () => void, active = false) => {
+    const b = h('button.side-link', { type: 'button', 'aria-current': active ? 'page' : undefined, onclick: on });
+    b.innerHTML = `${icon}<span>${label}</span>`;
+    return b;
+  };
+  const themeSel = h<HTMLSelectElement>('select', { 'aria-label': 'Theme', onchange: (e: Event) => applyTheme((e.target as HTMLSelectElement).value as Theme) },
+    ...(['system', 'light', 'dark'] as Theme[]).map((t) => h('option', { value: t }, t === 'system' ? 'System theme' : t === 'light' ? 'Light' : 'Dark')));
+  themeSel.value = applyTheme();
+  const logo = h('div.side-logo', {}, h('span.logo-mark', { 'aria-hidden': 'true' }), h('span', {}, 'Form Maker'));
+  const side = h('aside.home-side', { 'aria-label': 'Navigation' },
+    logo,
+    h('nav.side-nav', {},
+      nav(I.home, 'Home', () => main.scrollTo({ top: 0, behavior: 'smooth' }), true),
+      nav(I.file, 'Open sample', openSample),
+      nav(I.book, 'Naming guide', () => main.querySelector('#guide')?.scrollIntoView({ behavior: 'smooth' }))),
+    h('div.side-foot', {}, themeSel, (() => { const p = h('p.side-note'); p.innerHTML = `${I.lock}<span>Files stay on your device.</span>`; return p; })()));
+
+  // Main
+  const newBtn = h('button.btn.primary', { type: 'button', onclick: pick });
+  newBtn.innerHTML = `${I.plus}<span>New form</span>`;
+  const drop = h('button.home-drop', { type: 'button', onclick: pick, 'aria-label': 'Choose a PDF' });
+  drop.innerHTML = `<span class="drop-icon">${I.upload}</span><strong>Drop a PDF to make it fillable</strong><span>or choose a file \u00b7 nothing is uploaded</span>`;
+  const recentGrid = h('div.recent-grid');
+  const recentCount = h('span.section-meta');
+  const guide = h('section.home-guide', { id: 'guide', 'aria-labelledby': 'guide-title' },
+    h('h2.section-head', { id: 'guide-title' }, 'How to name placeholders'),
+    h('p.guide-lead', {}, 'In your layout app, draw a rectangle where the field should go and type one of these tags inside it as text. The tag is removed on export.'),
+    h('div.tag-table', {}, ...TAGS.map(([t, code, desc]) => h('div.tag-row', { 'data-type': t }, h('span.dot'), h('code', {}, code), h('span', {}, desc)))),
+    h('p.guide-note', {}, 'Alternatively, put the rectangle on a layer with that name, as long as your app exports layers to the PDF. You can also draw fields directly on the page in the editor.'));
+  const main = h('section.home-main', {},
+    h('header.home-head', {}, h('h1', {}, 'Your forms'), newBtn),
+    drop,
+    h('section.home-recent', { 'aria-labelledby': 'recent-title' },
+      h('div.section-row', {}, h('h2.section-head', { id: 'recent-title' }, 'Recent'), recentCount),
+      recentGrid),
+    guide,
+    fileIn);
+
+  const card = (p: ProjectSummary) => {
+    const del = h('button.icon-btn.recent-del', { type: 'button', title: 'Remove from recent', 'aria-label': `Remove ${p.name} from recent`, onclick: async (e: Event) => { e.stopPropagation(); await deleteProject(p.id); renderRecent(); } });
+    del.innerHTML = I.trash;
+    const thumb = h('div.recent-thumb', {}, p.thumb ? h('img', { src: p.thumb, alt: '' }) : null);
+    return h('div.recent-card', {},
+      h('button.recent-open', { type: 'button', 'aria-label': `Open ${p.name}`, onclick: () => openProject(p.id) },
+        thumb,
+        h('span.recent-name', {}, p.name),
+        h('span.recent-meta', {}, `${p.fieldCount} ${p.fieldCount === 1 ? 'field' : 'fields'} \u00b7 ${p.pageCount} ${p.pageCount === 1 ? 'page' : 'pages'} \u00b7 ${ago(p.updatedAt)}`)),
+      del);
+  };
+  const renderRecent = async () => {
+    const list = await listProjects();
+    recentCount.textContent = list.length ? String(list.length) : '';
+    recentGrid.replaceChildren(...(list.length
+      ? list.map(card)
+      : [h('p.recent-empty', {}, 'Forms you open appear here, with all their fields. They are saved only in this browser.')]));
+  };
+  renderRecent();
+  store.subscribe((k) => { if (k.has('doc') && !store.hasDocument) renderRecent(); });
+
+  const home = h('main.home', {}, side, main);
+  let depth = 0;
+  home.addEventListener('dragenter', (e) => { if (!e.dataTransfer?.types.includes('Files')) return; e.preventDefault(); depth++; home.classList.add('dropping'); });
+  home.addEventListener('dragover', (e) => { if (e.dataTransfer?.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+  home.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) home.classList.remove('dropping'); });
+  home.addEventListener('drop', async (e) => {
+    e.preventDefault(); depth = 0; home.classList.remove('dropping');
+    const files = e.dataTransfer?.files;
+    if (files?.length) await openPdfs(await filesFromList(files), 'replace');
+  });
+  return home;
+}

@@ -1,6 +1,7 @@
-import '@fontsource-variable/instrument-sans/wght.css';
+import '@fontsource-variable/inter/wght.css';
 import './styles.css';
 import './features.css';
+import './theme.css';
 import { store, type Tool } from './state';
 import { h, icons, isTyping, svg, toast } from './ui/dom';
 import { Viewer } from './ui/viewer';
@@ -13,47 +14,17 @@ import { mountTestPanel } from './ui/testmode';
 import { copySelection, cutSelection, paste } from './ui/clipboard';
 import { preflight } from './ui/preflight';
 import { mountEmptyHelp } from './ui/help';
+import { buildHome, applyTheme } from './ui/home';
+import { startAutosave, flushSave } from './ui/recent';
 import sampleLayers from './assets/sample-layers.pdf?inline';
 
 const app = document.getElementById('app')!;
 
 /* ------------------------------------------------------------------ */
-/* Start page                                                          */
+/* Home                                                                */
 /* ------------------------------------------------------------------ */
 
-const TAGS: [string, string, string][] = [
-  ['text', '[Form_Text_Name]', 'Text field'],
-  ['area', '[Form_Area_Message]', 'Multi-line text field'],
-  ['check', '[Form_Check_Terms]', 'Checkbox'],
-  ['radio', '[Form_Radio_Salutation_Ms]', 'Radio button: group, then value'],
-];
-
-function buildStart(): HTMLElement {
-  const fileIn = h<HTMLInputElement>('input', { type: 'file', accept: 'application/pdf,.pdf', hidden: true });
-  fileIn.addEventListener('change', async () => { if (fileIn.files?.length) await openPdfs(await filesFromList(fileIn.files), 'replace'); fileIn.value = ''; });
-  const pick = h('button.btn.primary.lg', { type: 'button', onclick: () => fileIn.click() }, 'Choose PDF');
-  const sample = h('button.btn.ghost.lg', { type: 'button', onclick: () => openPdfs([{ name: 'sample-layers.pdf', bytes: dataUriToBytes(sampleLayers) }], 'replace') }, 'Open sample');
-
-  const sheet = h('section.sheet', { 'aria-labelledby': 'start-title' },
-    h('span.crop.tl'), h('span.crop.tr'), h('span.crop.bl'), h('span.crop.br'),
-    h('div.sheet-inner', {},
-      h('p.mark', {}, h('span.ink.c'), h('span.ink.m'), h('span.ink.y'), h('span.ink.k'), h('span.mark-name', {}, 'PDF Form Maker')),
-      h('h1', { id: 'start-title' }, 'Turn your PDF into a fillable form.'),
-      h('p.lead', {}, 'Drop a PDF here. Named placeholders automatically become real form fields. Then adjust, add and check them, or draw fields directly on the page.'),
-      h('div.start-actions', {}, pick, sample),
-      h('p.privacy', {}, 'Your file stays on your device. Nothing is uploaded.'),
-      fileIn));
-
-  const legend = h('aside.legend', { 'aria-labelledby': 'legend-title' },
-    h('h2', { id: 'legend-title' }, 'How to name placeholders'),
-    h('p', {}, 'In your layout app, draw a rectangle where the field should go and type one of these tags inside it as text:'),
-    h('ul.tag-list', {}, ...TAGS.map(([t, code, desc]) => h('li', { 'data-type': t }, h('span.dot'), h('code', {}, code), h('span', {}, desc)))),
-    h('p.small', {}, 'The tag is removed automatically on export. Alternatively, put the rectangle on a layer with that name, as long as your app exports layers to the PDF.'));
-
-  const start = h('main.start', {}, sheet, legend);
-  bindDrop(start, 'replace');
-  return start;
-}
+const openSample = () => openPdfs([{ name: 'sample-layers.pdf', bytes: dataUriToBytes(sampleLayers) }], 'replace');
 
 function dataUriToBytes(uri: string): Uint8Array {
   const b64 = uri.slice(uri.indexOf(',') + 1);
@@ -91,8 +62,6 @@ const TOOLS: { t: Tool; label: string; key: string }[] = [
 function buildEditor(): HTMLElement {
   const mergeIn = h<HTMLInputElement>('input', { type: 'file', accept: 'application/pdf,.pdf', multiple: true, hidden: true });
   mergeIn.addEventListener('change', async () => { if (mergeIn.files?.length) await openPdfs(await filesFromList(mergeIn.files), 'append'); mergeIn.value = ''; });
-  const openIn = h<HTMLInputElement>('input', { type: 'file', accept: 'application/pdf,.pdf', hidden: true });
-  openIn.addEventListener('change', async () => { if (openIn.files?.length) await openPdfs(await filesFromList(openIn.files), 'replace'); openIn.value = ''; });
 
   const viewerEl = h('section.viewer', { 'aria-label': 'Document', 'data-tool': 'select' });
   const viewer = new Viewer(viewerEl);
@@ -134,7 +103,8 @@ function buildEditor(): HTMLElement {
   const propsToggle = h('button.icon-btn.only-narrow', { type: 'button', 'aria-label': 'Show properties', title: 'Properties', onclick: () => { inspEl.classList.toggle('open'); railEl.classList.remove('open'); } });
   propsToggle.innerHTML = icons.sliders;
 
-  const back = h('button.icon-btn', { type: 'button', title: 'Open another PDF', 'aria-label': 'Open another PDF', onclick: () => openIn.click() });
+  // Back to home: the project is saved automatically, so nothing gets lost
+  const back = h('button.icon-btn', { type: 'button', title: 'Back to home', 'aria-label': 'Back to home', onclick: async () => { if (store.testMode) store.setTestMode(false); await flushSave(); store.reset(); } });
   back.innerHTML = icons.back;
 
   const title = h('span.doc-title');
@@ -142,7 +112,7 @@ function buildEditor(): HTMLElement {
     h('div.bar-left', {}, back, h('span.mark.small', { 'aria-hidden': 'true' }, h('span.ink.c'), h('span.ink.m'), h('span.ink.y'), h('span.ink.k')), title),
     tools,
     h('div.bar-right', {}, pagesToggle, undo, redo, h('span.sep'), zoomOut, zoomLabel, zoomIn, h('span.sep'), propsToggle, testBtn, exportBtn),
-    mergeIn, openIn);
+    mergeIn);
 
   const editor = h('div.editor', {}, bar, railEl, viewerEl, inspEl);
   bindDrop(viewerEl, 'append');
@@ -207,7 +177,9 @@ function buildEditor(): HTMLElement {
 
 /* ------------------------------------------------------------------ */
 
-const start = buildStart();
+applyTheme();
+startAutosave();
+const start = buildHome(openSample);
 const editor = buildEditor();
 app.append(start);
 

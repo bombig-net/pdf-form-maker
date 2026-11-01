@@ -5,7 +5,7 @@ import { effectiveColor, fromHex, toHex } from '../util/color';
 import { uid, round2 } from '../util/geom';
 import type { Viewer } from './viewer';
 import { LOCALES, locale, datePattern, type LocaleId } from '../util/locale';
-import { insertAddressBlock } from './extras';
+import { insertAddressBlock, suggestAllFields } from './extras';
 import { saveProjectFile } from './recent';
 import { CALC_OPS, parseFormula, type CalcOp } from '../pdf/logic';
 
@@ -94,15 +94,16 @@ export class Inspector {
             type: 'button', 'data-type': f.type,
             onclick: () => { store.select(f.id); this.viewer.scrollToField(f.id); },
           }, h('span.dot'), h('span.field-row-name', {}, f.type === 'radio' ? `${f.name} · ${f.radioValue}` : f.type === 'reset' ? f.label : f.name),
-          h('span.field-row-src', {}, f.source === 'layer' ? 'Layer' : f.source === 'tag' ? 'Tag' : f.source === 'import' ? 'existing' : '')));
+          h('span.field-row-src', {}, f.source === 'layer' ? 'Layer' : f.source === 'tag' ? 'Tag' : f.source === 'import' ? 'existing' : f.source === 'auto' ? 'Suggested' : '')));
         }
       });
       wrap.append(list);
     }
 
     wrap.append(h('h3.section-title', {}, 'Insert'));
+    const detect = h('button.btn.secondary', { type: 'button', onclick: () => suggestAllFields((id) => this.viewer.scrollToField(id)) }, 'Detect fields');
     const addr = h('button.btn.secondary', { type: 'button', onclick: () => insertAddressBlock(this.viewer) }, 'Address block');
-    wrap.append(h('div.insert-row', {}, addr), h('p.hint', {}, 'Name, street, postal code, city, email and phone as ready-made fields on the current page.'));
+    wrap.append(h('div.insert-row', {}, detect, addr), h('p.hint', {}, 'Detect fields looks for empty boxes, lines and checkboxes without tags. Address block adds name, street, postal code, city, email and phone.'));
 
     wrap.append(h('h3.section-title', {}, 'Project'));
     const save = h('button.btn.secondary', { type: 'button', onclick: () => saveProjectFile() }, 'Save project file');

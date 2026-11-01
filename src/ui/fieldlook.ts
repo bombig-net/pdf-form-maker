@@ -92,23 +92,37 @@ export function previewContent(f: Field, look: FieldLook): HTMLElement {
   const textStyle = (align: string) => `font:${look.font};color:${GHOST};text-align:${align};padding:${f.type === 'area' ? `${look.padPx}px` : `0 ${look.padPx}px`}`;
 
   if (f.type === 'text' && f.comb && f.maxLength > 0) {
-    const chars = [...(f.placeholder || '')];
-    fp.append(h('div.fp-comb', { style: `--cells:${f.maxLength};font:${look.font};color:${GHOST}` },
+    const chars = [...(f.defaultValue || f.placeholder || '')];
+    fp.append(h('div.fp-comb', { style: `--cells:${f.maxLength};font:${look.font};color:${f.defaultValue ? look.color : GHOST}` },
       ...Array.from({ length: f.maxLength }, (_, i) => h('span', {}, chars[i] ?? ''))));
   } else if (f.type === 'text' || f.type === 'area') {
     const hint = calcHint(f);
-    const text = hint || f.placeholder;
-    if (text) fp.append(h(`span.fp-text${f.type === 'area' ? '.multi' : ''}${hint ? '.calc' : ''}`, { style: textStyle(f.align) }, text));
+    // A default value is real content (field color); otherwise the gray placeholder
+    const def = !hint && f.defaultValue ? f.defaultValue : '';
+    const text = hint || def || f.placeholder;
+    if (text) {
+      const span = h(`span.fp-text${f.type === 'area' ? '.multi' : ''}${hint ? '.calc' : ''}`, { style: textStyle(f.align) }, text);
+      if (def) span.style.color = look.color;
+      fp.append(span);
+    }
   } else if (f.type === 'dropdown') {
-    const first = (f.choices ?? []).find((c) => c.trim());
-    if (first) fp.append(h('span.fp-text.dd', { style: textStyle('left') }, first));
+    const first = f.defaultValue || (f.choices ?? []).find((c) => c.trim());
+    if (first) {
+      const span = h('span.fp-text.dd', { style: textStyle('left') }, first);
+      if (f.defaultValue) span.style.color = look.color;
+      fp.append(span);
+    }
+  } else if (f.type === 'signature') {
+    // Signed in Acrobat Reader: the editor shows where
+    fp.append(h('span.fp-sig', { style: `padding:0 ${look.padPx}px` }, 'Sign here'));
   } else if (f.type === 'reset') {
     // Not 'btn': that class belongs to the app's own buttons (fixed height)
     fp.classList.add('fp-button');
     fp.style.background = toHex(f.buttonBg);
     fp.append(h('span.fp-btn', { style: `font:${look.font};color:${look.color}` }, f.label || 'Button'));
   } else {
-    fp.append(h(`span.fp-mark${f.type === 'radio' ? '.dot' : ''}`, { style: `color:${look.color};--mark:${look.color}` }, f.type === 'check' ? '\u2713' : ''));
+    const on = f.type === 'check' ? f.defaultValue === 'on' : !!f.defaultValue && f.defaultValue === f.radioValue;
+    fp.append(h(`span.fp-mark${f.type === 'radio' ? '.dot' : ''}${on ? '.on' : ''}`, { style: `color:${look.color};--mark:${look.color}` }, f.type === 'check' ? '\u2713' : ''));
   }
   return fp;
 }

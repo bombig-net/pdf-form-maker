@@ -7,9 +7,13 @@ import { sortForTabOrder } from '../util/tabOrder';
 import { locale, datePattern, normalizeDate, parseNumber } from '../util/locale';
 import { computeCalc, conditionMet } from '../pdf/logic';
 import { fieldLook, outsideCovers } from './fieldlook';
+import { runExport } from './actions';
+import { signDialog } from './signpad';
 
 /** Test mode input values, keyed by field name (fields with the same name share a value). */
 const values = new Map<string, string | boolean>();
+/** Download option in the test panel: bake the entries into the page. */
+let flattenCopy = false;
 
 /** Tab order across all pages (same as in the export). */
 function tabIndexMap(): Map<string, number> {
@@ -25,6 +29,12 @@ function tabIndexMap(): Map<string, number> {
 
 export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: ViewGeom) {
   overlay.replaceChildren();
+  // Default values, as the PDF opens with them (also after "Clear inputs")
+  for (const f of store.fields) {
+    if (!f.defaultValue || values.has(f.name)) continue;
+    if (f.type === 'check') values.set(f.name, f.defaultValue === 'on');
+    else if (f.type === 'radio' || f.type === 'dropdown' || f.type === 'text' || f.type === 'area') values.set(f.name, f.defaultValue);
+  }
   const tabs = tabIndexMap();
   for (const f of fields) {
     const r = rectToScreen(g, f.rect);
@@ -48,6 +58,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       if (f.maxLength > 0) el.maxLength = f.maxLength;
       if (f.required) el.required = true;
       if (f.calc) { el.readOnly = true; el.classList.add('calc'); }
+      if (f.readOnly) el.readOnly = true;
       Object.assign(el.style, { font, color, textAlign: f.align });
       // Same inner distance as in Acrobat: its own margin of about 2 pt plus the form padding
       el.style.padding = f.type === 'area' ? `${padPx}px` : `0 ${padPx}px`;
@@ -87,6 +98,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       el.dataset.fname = f.name;
       el.setAttribute('aria-label', label);
       if (f.required) el.required = true;
+      if (f.readOnly) el.disabled = true;
       Object.assign(el.style, { font, color, paddingLeft: `${padPx}px` });
       el.addEventListener('change', () => sync(f.name, el.value, el));
       box.append(el);
@@ -98,11 +110,25 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       el.setAttribute('aria-label', f.type === 'radio' ? `${label}: ${f.radioValue}` : label);
       el.checked = f.type === 'check' ? values.get(f.name) === true : values.get(f.name) === f.radioValue;
       el.style.setProperty('--tick', color);
+      if (f.readOnly) el.disabled = true;
       el.addEventListener('change', () => {
         if (f.type === 'check') sync(f.name, el.checked, el);
         else { values.set(f.name, f.radioValue); refreshLogic(); }
       });
       box.append(el);
+    } else if (f.type === 'signature') {
+      // Sign here to see it in the filled-in copy; recipients sign in Acrobat Reader
+      const signed = String(values.get(f.name) ?? '');
+      const sig = h<HTMLButtonElement>('button.test-sig', { type: 'button', 'aria-label': `${label}: ${signed ? 'signed, change the signature' : 'sign'}` },
+        signed ? h('img', { src: signed, alt: '' }) : h('span', {}, 'Click to sign'));
+      sig.tabIndex = +tab;
+      sig.addEventListener('click', async () => {
+        const res = await signDialog({ aspect: r.width / Math.max(1, r.height), hasSignature: !!signed });
+        if (res === null) return;
+        if (res) values.set(f.name, res); else values.delete(f.name);
+        store.emit('mode');
+      });
+      box.append(sig);
     } else {
       const btn = h<HTMLButtonElement>('button', { type: 'button', style: `font:${font};color:${color};background:${toHex(f.buttonBg)}` }, f.label || 'Reset');
       btn.tabIndex = +tab;
@@ -199,24 +225,42 @@ function validate(f: Field, el: HTMLInputElement | HTMLTextAreaElement) {
 export function mountTestPanel(inspector: HTMLElement) {
   const panel = h('div.panel.side-panel.test-panel');
   inspector.prepend(panel);
+  // Only this line changes while typing; rebuilding the whole panel would swallow clicks on its buttons
+  const status = h('li');
+  const missingText = () => {
+    const missing = store.fields.filter((f) => f.required && !values.get(f.name)).length;
+    return missing ? `${missing} required ${missing === 1 ? 'field is' : 'fields are'} still empty.` : 'All required fields are filled in.';
+  };
   const render = () => {
     inspector.classList.toggle('mode-test', store.testMode);
     panel.hidden = !store.testMode;
     if (!store.testMode) return;
-    const missing = store.fields.filter((f) => f.required && !values.get(f.name)).length;
+    status.textContent = missingText();
     const clear = h('button.btn.secondary', { type: 'button', onclick: () => { values.clear(); store.emit('mode'); } }, 'Clear inputs');
     const done = h('button.btn.primary', { type: 'button', onclick: () => store.setTestMode(false) }, 'Back to editing');
+    // Download what was typed in test mode, as a fillable or a flattened PDF
+    const flatId = 'flatten-copy';
+    const flattenToggle = h('div.toggle-row', {},
+      h('input', { type: 'checkbox', id: flatId, role: 'switch', checked: flattenCopy, onchange: (e: Event) => { flattenCopy = (e.target as HTMLInputElement).checked; } }),
+      h('label', { for: flatId }, 'Flatten (no longer editable)'),
+      h('p.hint', {}, 'Bakes the entries into the page, e.g. for archiving or printing. Buttons and signature fields are removed.'));
+    const download = h<HTMLButtonElement>('button.btn.secondary', { type: 'button' }, 'Download filled PDF');
+    download.addEventListener('click', () => runExport(download, { values: Object.fromEntries(values), flatten: flattenCopy }));
     panel.replaceChildren(
       h('h2.panel-title', {}, 'Test the form'),
       h('p.panel-lead', {}, 'Fill in the form the way it will work in a PDF reader. Press Tab to move from field to field in the calculated order.'),
       h('ul.test-notes', {},
         h('li', {}, 'Formats like date, email or number are checked when you leave a field.'),
         h('li', {}, 'Fields with the same name show the same content.'),
-        h('li', {}, missing ? `${missing} required ${missing === 1 ? 'field is' : 'fields are'} still empty.` : 'All required fields are filled in.')),
-      h('p.hint', {}, 'Your inputs are not included in the exported PDF.'),
+        status),
+      h('p.hint', {}, 'The normal export stays empty. To keep what you typed, download a filled-in copy.'),
+      h('h3.section-title', {}, 'Filled-in copy'),
+      flattenToggle,
+      h('div.insert-row', {}, download),
       h('div.panel-actions', {}, clear, done));
   };
   store.subscribe((k) => { if (k.has('mode') || k.has('doc')) render(); });
-  document.addEventListener('change', () => { if (store.testMode) render(); });
+  document.addEventListener('change', () => { if (store.testMode) status.textContent = missingText(); });
+  document.addEventListener('input', () => { if (store.testMode) status.textContent = missingText(); });
   render();
 }

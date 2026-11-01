@@ -62,7 +62,7 @@ export async function openPdfs(files: InputFile[], mode: 'replace' | 'append'): 
 
   const n = newFields.length;
   if (n) toast(`${n} ${n === 1 ? 'field' : 'fields'} found on ${newPages.length} ${newPages.length === 1 ? 'page' : 'pages'}.`);
-  else if (mode === 'replace') toast('No placeholders found. Draw fields with the tools above.', 'info', 6000);
+  else if (mode === 'replace') toast('No placeholders found. Draw fields with the tools on the left, or use Auto-detect.', 'info', 6000);
 
   const newIds = new Set(newFields.map((f) => f.id));
   const dupes = crossPageDuplicates(store.fields).filter((name) => store.fields.some((f) => f.name === name && newIds.has(f.id)));
@@ -110,7 +110,8 @@ export function askDuplicates(names: string[]): Promise<void> {
   });
 }
 
-export async function runExport(btn?: HTMLButtonElement) {
+/** Exports the form. With values (from test mode) it is a filled-in copy, with flatten it can no longer be edited. */
+export async function runExport(btn?: HTMLButtonElement, extra: { values?: Record<string, string | boolean>; flatten?: boolean } = {}) {
   if (!store.pages.length) return;
   btn?.setAttribute('aria-busy', 'true');
   if (btn) btn.disabled = true;
@@ -118,13 +119,13 @@ export async function runExport(btn?: HTMLButtonElement) {
     const t0 = performance.now();
     const res = await exportPdf({
       docs: store.docs, pages: store.pages, fields: store.fields, customFonts: store.customFonts,
-      options: { hidePlaceholderLayers: store.options.hidePlaceholderLayers, locale: store.options.locale, padding: store.options.formFont.padding ?? 0 },
+      options: { hidePlaceholderLayers: store.options.hidePlaceholderLayers, locale: store.options.locale, padding: store.options.formFont.padding ?? 0, ...extra },
     });
     const ms = Math.round(performance.now() - t0);
-    const name = `${store.fileName || 'form'}-fillable.pdf`;
+    const name = `${store.fileName || 'form'}-${extra.flatten ? 'flattened' : extra.values ? 'filled' : 'fillable'}.pdf`;
     const saved = await saveFile(name, res.bytes);
     if (saved === 'declined') return;
-    toast(`${res.fieldCount} ${res.fieldCount === 1 ? 'field' : 'fields'} exported (${ms} ms).`);
+    toast(extra.flatten ? `Flattened PDF saved (${ms} ms). It can be printed but no longer edited.` : extra.values ? `Filled-in PDF saved (${ms} ms).` : `${res.fieldCount} ${res.fieldCount === 1 ? 'field' : 'fields'} exported (${ms} ms).`);
     for (const w of res.warnings) toast(w, 'warn', 8000);
   } catch (e) {
     console.error(e);

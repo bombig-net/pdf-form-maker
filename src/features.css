@@ -19,7 +19,7 @@
 .editor.testing .tools { opacity: 0.35; pointer-events: none; }
 .viewer.testing .page { box-shadow: 0 0 0 2px var(--accent), var(--shadow-sheet); }
 .test-field { position: absolute; }
-.test-field.covered { background: var(--cover); }
+.test-field.covered { background: var(--cover); background-clip: content-box; padding: 1px; } /* keeps the printed frame visible */
 .side-panel .panel-actions { flex-wrap: wrap; }
 .test-field input[type='text'], .test-field textarea {
   width: 100%; height: 100%; margin: 0; padding: 0 3px; border: 0; border-radius: 0;
@@ -121,7 +121,7 @@ textarea.choices:focus { outline: none; border-color: var(--accent); box-shadow:
 .formula-error:empty { display: none; }
 .formula-error { color: var(--danger); margin-top: -4px; }
 .test-field input.calc { background: color-mix(in srgb, var(--brand) 10%, transparent); cursor: default; }
-.test-field[hidden] { display: none; }
+.test-field.cond-hidden > * { visibility: hidden; }
 .test-cover { position: absolute; pointer-events: none; }
 
 /* ---------- Logic badges and comb boxes on rotated pages ---------- */

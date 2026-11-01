@@ -20,6 +20,7 @@ const TAGS: [string, string, string][] = [
   ['area', '[Form_Area_Message]', 'Multi-line text field'],
   ['check', '[Form_Check_Terms]', 'Checkbox'],
   ['radio', '[Form_Radio_Salutation_Ms]', 'Radio button: group, then value'],
+  ['dropdown', '[Form_Dropdown_Country]', 'Dropdown, options are set in the editor'],
 ];
 
 type Theme = 'system' | 'light' | 'dark';

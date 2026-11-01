@@ -1,12 +1,18 @@
 import '@fontsource-variable/instrument-sans/wght.css';
 import './styles.css';
+import './features.css';
 import { store, type Tool } from './state';
-import { h, icons, isTyping, toast } from './ui/dom';
+import { h, icons, isTyping, svg, toast } from './ui/dom';
 import { Viewer } from './ui/viewer';
 import { PagesRail } from './ui/pages';
 import { Inspector, deleteField, duplicateField } from './ui/inspector';
 import { filesFromList, openPdfs, runExport } from './ui/actions';
 import { initPdfjs } from './pdf/pdfjs';
+import { mountMultiPanel, deleteSelected } from './ui/arrange';
+import { mountTestPanel } from './ui/testmode';
+import { copySelection, cutSelection, paste } from './ui/clipboard';
+import { preflight } from './ui/preflight';
+import { mountEmptyHelp } from './ui/help';
 import sampleLayers from './assets/beispiel-ebenen.pdf?inline';
 
 const app = document.getElementById('app')!;
@@ -94,6 +100,9 @@ function buildEditor(): HTMLElement {
   new PagesRail(railEl, viewer, () => mergeIn.click());
   const inspEl = h('aside.inspector', { 'aria-label': 'Eigenschaften' });
   new Inspector(inspEl, viewer);
+  mountMultiPanel(inspEl, viewer);
+  mountTestPanel(inspEl);
+  mountEmptyHelp(viewerEl);
 
   // Werkzeuge
   const tools = h('div.tools', { role: 'toolbar', 'aria-label': 'Werkzeuge' });
@@ -114,7 +123,10 @@ function buildEditor(): HTMLElement {
   zoomIn.innerHTML = icons.plus;
   const zoomLabel = h('button.zoom-label', { type: 'button', title: 'An Breite anpassen', onclick: () => viewer.fitWidth() }, '100 %');
 
-  const exportBtn = h<HTMLButtonElement>('button.btn.primary.export', { type: 'button', onclick: () => runExport(exportBtn) });
+  const doExport = async () => { if (store.testMode) store.setTestMode(false); if (await preflight(viewer)) await runExport(exportBtn); };
+  const exportBtn = h<HTMLButtonElement>('button.btn.primary.export', { type: 'button', onclick: doExport });
+  const testBtn = h<HTMLButtonElement>('button.btn.secondary.test-toggle', { type: 'button', 'aria-pressed': 'false', title: 'Formular in der App ausfüllen (Strg/⌘ E)', onclick: () => { store.setTestMode(!store.testMode); if (store.testMode) { inspEl.classList.add('open'); railEl.classList.remove('open'); } } });
+  testBtn.innerHTML = `${svg('<path d="M7 5l12 7-12 7z"/>')}<span>Testen</span>`;
   exportBtn.innerHTML = `${icons.download}<span>PDF exportieren</span>`;
 
   const pagesToggle = h('button.icon-btn.only-narrow', { type: 'button', 'aria-label': 'Seiten anzeigen', title: 'Seiten', onclick: () => { railEl.classList.toggle('open'); inspEl.classList.remove('open'); } });
@@ -129,7 +141,7 @@ function buildEditor(): HTMLElement {
   const bar = h('header.bar', {},
     h('div.bar-left', {}, back, h('span.mark.small', { 'aria-hidden': 'true' }, h('span.ink.c'), h('span.ink.m'), h('span.ink.y'), h('span.ink.k')), title),
     tools,
-    h('div.bar-right', {}, pagesToggle, undo, redo, h('span.sep'), zoomOut, zoomLabel, zoomIn, h('span.sep'), propsToggle, exportBtn),
+    h('div.bar-right', {}, pagesToggle, undo, redo, h('span.sep'), zoomOut, zoomLabel, zoomIn, h('span.sep'), propsToggle, testBtn, exportBtn),
     mergeIn, openIn);
 
   const editor = h('div.editor', {}, bar, railEl, viewerEl, inspEl);
@@ -140,6 +152,11 @@ function buildEditor(): HTMLElement {
     if (k.has('zoom') || k.has('doc')) zoomLabel.textContent = `${Math.round(store.zoom * 100)} %`;
     if (k.has('history') || k.has('doc')) { undo.disabled = !store.canUndo; redo.disabled = !store.canRedo; }
     if (k.has('doc')) { title.textContent = store.fileName; title.title = store.fileName; }
+    if (k.has('mode') || k.has('doc')) {
+      editor.classList.toggle('testing', store.testMode);
+      testBtn.setAttribute('aria-pressed', String(store.testMode));
+      testBtn.querySelector('span')!.textContent = store.testMode ? 'Bearbeiten' : 'Testen';
+    }
     if (k.has('selection') && store.selectedId && window.matchMedia('(max-width: 899px)').matches) {
       // auf schmalen Bildschirmen Eigenschaften nicht automatisch aufklappen – nur Hinweis per Badge
       propsToggle.classList.add('pulse'); setTimeout(() => propsToggle.classList.remove('pulse'), 900);
@@ -150,22 +167,31 @@ function buildEditor(): HTMLElement {
   window.addEventListener('keydown', (e) => {
     if (!store.hasDocument) return;
     const mod = e.metaKey || e.ctrlKey;
+    if (mod && e.key.toLowerCase() === 'e') { e.preventDefault(); store.setTestMode(!store.testMode); return; }
+    if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); doExport(); return; }
+    if (store.testMode) { if (e.key === 'Escape') store.setTestMode(false); return; }
+    if (mod && !isTyping(e)) {
+      const k = e.key.toLowerCase();
+      if (k === 'c' && copySelection()) { e.preventDefault(); return; }
+      if (k === 'x' && cutSelection()) { e.preventDefault(); return; }
+      if (k === 'v' && paste(viewer)) { e.preventDefault(); return; }
+      if (k === 'a') { e.preventDefault(); const pid = viewer.currentPageId(); store.setSelection(store.fields.filter((f) => f.pageId === pid).map((f) => f.id)); return; }
+    }
     if (mod && e.key.toLowerCase() === 'z') { if (isTyping(e)) return; e.preventDefault(); if (e.shiftKey) store.redo(); else store.undo(); return; }
     if (mod && e.key.toLowerCase() === 'y') { if (isTyping(e)) return; e.preventDefault(); store.redo(); return; }
     if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); if (store.selectedId) duplicateField(store.selectedId); return; }
-    if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); runExport(exportBtn); return; }
     if (mod && (e.key === '+' || e.key === '=')) { e.preventDefault(); viewer.zoomAt(store.zoom * 1.2); return; }
     if (mod && e.key === '-') { e.preventDefault(); viewer.zoomAt(store.zoom / 1.2); return; }
     if (mod && e.key === '0') { e.preventDefault(); viewer.fitWidth(); return; }
     if (isTyping(e) || mod || e.altKey) return;
     const sel = store.selectedId;
-    if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); deleteField(sel); return; }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); if (store.selectedFields.length > 1) deleteSelected(); else deleteField(sel); return; }
     if (e.key === 'Escape') { if (store.tool !== 'select') store.setTool('select'); else store.select(null); return; }
     if (sel && e.key.startsWith('Arrow')) {
       e.preventDefault();
       const step = e.shiftKey ? 10 : 1;
       const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key as 'ArrowLeft'];
-      if (d) viewer.nudge(sel, d[0], d[1]);
+      if (d) viewer.nudge(store.selectedFields.map((f) => f.id), d[0], d[1]);
       return;
     }
     const tool = TOOLS.find((t) => t.key.toLowerCase() === e.key.toLowerCase());

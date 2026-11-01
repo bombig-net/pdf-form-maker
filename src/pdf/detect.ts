@@ -70,7 +70,8 @@ interface CharPos { x0: number; x1: number; y: number; h: number }
 interface Line { text: string; chars: (CharPos | null)[]; y: number; h: number; x0: number; x1: number }
 
 export function buildLines(items: TextItemLite[]): Line[] {
-  const its = items.filter((t) => t.str.length > 0 && t.h > 0).slice().sort((a, b) => (Math.abs(a.y - b.y) < Math.min(a.h, b.h) * 0.3 ? a.x - b.x : b.y - a.y));
+  // Whitespace-only items are skipped: they can bridge large gaps and merge separate labels into one line
+  const its = items.filter((t) => t.str.trim().length > 0 && t.h > 0).slice().sort((a, b) => (Math.abs(a.y - b.y) < Math.min(a.h, b.h) * 0.3 ? a.x - b.x : b.y - a.y));
   const lines: Line[] = [];
   let cur: Line | null = null;
   let lastEnd = 0;

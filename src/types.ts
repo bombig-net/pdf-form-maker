@@ -36,7 +36,7 @@ export interface Field {
   /** Caption (reset button only). */
   label: string;
   buttonBg: RGB;
-  source: 'layer' | 'tag' | 'manual' | 'import';
+  source: 'layer' | 'tag' | 'manual' | 'import' | 'auto';
   /** Additional areas whose text is hidden on export (e.g. the tag text itself). */
   extraHide: Rect[];
   /** Options of a dropdown field. */

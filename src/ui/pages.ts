@@ -14,10 +14,10 @@ export class PagesRail {
 
   constructor(host: HTMLElement, private viewer: Viewer, onMerge: () => void) {
     this.el = host;
-    this.list = h('ol.thumbs', { 'aria-label': 'Seiten' });
-    const merge = h('button.rail-add', { type: 'button', onclick: onMerge, title: 'Weitere PDF anhängen' });
-    merge.innerHTML = `${icons.fileAdd}<span>PDF anhängen</span>`;
-    host.append(h('div.rail-head', {}, h('span', {}, 'Seiten'), h('span.rail-count')), this.list, merge);
+    this.list = h('ol.thumbs', { 'aria-label': 'Pages' });
+    const merge = h('button.rail-add', { type: 'button', onclick: onMerge, title: 'Append another PDF' });
+    merge.innerHTML = `${icons.fileAdd}<span>Append PDF</span>`;
+    host.append(h('div.rail-head', {}, h('span', {}, 'Pages'), h('span.rail-count')), this.list, merge);
     store.subscribe((k) => this.onChange(k));
   }
 
@@ -33,13 +33,13 @@ export class PagesRail {
       let t = this.thumbs.get(p.id);
       if (!t) {
         const canvas = h<HTMLCanvasElement>('canvas');
-        const rot = h('button.icon-btn', { type: 'button', title: 'Seite drehen', 'aria-label': 'Seite um 90° drehen', onclick: (e: Event) => { e.stopPropagation(); this.rotate(p.id); } });
+        const rot = h('button.icon-btn', { type: 'button', title: 'Rotate page', 'aria-label': 'Rotate page by 90°', onclick: (e: Event) => { e.stopPropagation(); this.rotate(p.id); } });
         rot.innerHTML = icons.rotate;
-        const del = h('button.icon-btn.danger', { type: 'button', title: 'Seite löschen', 'aria-label': 'Seite löschen', onclick: (e: Event) => { e.stopPropagation(); this.remove(p.id); } });
+        const del = h('button.icon-btn.danger', { type: 'button', title: 'Delete page', 'aria-label': 'Delete page', onclick: (e: Event) => { e.stopPropagation(); this.remove(p.id); } });
         del.innerHTML = icons.trash;
         const el = h('li.thumb', { 'data-id': p.id, tabindex: '0' },
           h('div.thumb-paper', {}, canvas, h('span.thumb-fields')),
-          h('div.thumb-meta', {}, h('span.grip', { title: 'Ziehen zum Umsortieren', 'aria-hidden': 'true' }), h('span.thumb-num'), h('span.thumb-actions', {}, rot, del)));
+          h('div.thumb-meta', {}, h('span.grip', { title: 'Drag to reorder', 'aria-hidden': 'true' }), h('span.thumb-num'), h('span.thumb-actions', {}, rot, del)));
         el.addEventListener('pointerdown', (e) => this.onDown(e, p.id));
         el.addEventListener('click', (e) => {
           if ((e.target as HTMLElement).closest('button') || this.justDragged) return;
@@ -53,7 +53,7 @@ export class PagesRail {
         this.thumbs.set(p.id, t);
       }
       (t.el.querySelector('.thumb-num') as HTMLElement).textContent = String(i + 1);
-      t.el.setAttribute('aria-label', `Seite ${i + 1}`);
+      t.el.setAttribute('aria-label', `Page ${i + 1}`);
       if (this.list.children[i] !== t.el) this.list.insertBefore(t.el, this.list.children[i] ?? null);
       this.renderThumb(p, t);
     });
@@ -65,7 +65,7 @@ export class PagesRail {
       const n = store.fields.filter((f) => f.pageId === id).length;
       const badge = t.el.querySelector('.thumb-fields') as HTMLElement;
       badge.textContent = n ? String(n) : '';
-      badge.title = n ? `${n} Felder` : '';
+      badge.title = n ? `${n} fields` : '';
     }
   }
 
@@ -112,11 +112,11 @@ export class PagesRail {
     requestAnimationFrame(() => (this.thumbs.get(id)?.el as HTMLElement | undefined)?.focus());
   }
 
-  /* Umsortieren per Ziehen (Maus und Touch) */
+  /* Reorder by dragging (mouse and touch) */
   private onDown(e: PointerEvent, id: string) {
     if ((e.target as HTMLElement).closest('button')) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    // Auf Touch-Geräten nur über den Griff ziehen, damit die Liste scrollbar bleibt
+    // On touch devices only drag via the grip so the list stays scrollable
     if (e.pointerType !== 'mouse' && !(e.target as HTMLElement).closest('.grip')) return;
     const el = this.thumbs.get(id)!.el;
     const marker = h('div.drop-marker');
@@ -165,7 +165,7 @@ export class PagesRail {
     const listRect = this.list.getBoundingClientRect();
     const y = ref ? ref.getBoundingClientRect().top - listRect.top + this.list.scrollTop - 6 : (items[items.length - 1].getBoundingClientRect().bottom - listRect.top + this.list.scrollTop + 4);
     d.marker.style.top = `${y}px`;
-    // Auto-Scroll
+    // Auto-scroll
     if (e.clientY < listRect.top + 30) this.list.scrollTop -= 8;
     if (e.clientY > listRect.bottom - 30) this.list.scrollTop += 8;
   }

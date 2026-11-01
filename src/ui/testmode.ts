@@ -5,7 +5,7 @@ import { rectToScreen, type ViewGeom } from '../util/geom';
 import { effectiveColor, toHex } from '../util/color';
 import { sortForTabOrder } from '../util/tabOrder';
 
-/** Eingaben im Testmodus, je Feldname (gleichnamige Felder teilen sich den Wert). */
+/** Test mode input values, keyed by field name (fields with the same name share a value). */
 const values = new Map<string, string | boolean>();
 
 const FONT_STACK: Record<string, string> = {
@@ -14,7 +14,7 @@ const FONT_STACK: Record<string, string> = {
   Courier: '"Courier New", Courier, monospace',
 };
 
-/** Tab-Reihenfolge über alle Seiten (wie im Export). */
+/** Tab order across all pages (same as in the export). */
 function tabIndexMap(): Map<string, number> {
   const m = new Map<string, number>();
   let i = 1;
@@ -31,7 +31,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
   const tabs = tabIndexMap();
   for (const f of fields) {
     const r = rectToScreen(g, f.rect);
-    // Text, der im Export ausgeblendet wird, auch hier abdecken (Hintergrundfarbe der Vorlage)
+    // Cover text that is hidden on export here as well (background color of the template)
     const cover = (f.hideText || f.extraHide.length) && f.bgColor ? `;--cover:${toHex(f.bgColor)}` : '';
     const box = h('div.test-field', { 'data-type': f.type, class: cover ? 'covered' : undefined, style: `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px${cover}` });
     const color = toHex(f.type === 'reset' ? effectiveColor({ ...f, bgColor: f.buttonBg }) : effectiveColor(f));
@@ -76,7 +76,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       });
       box.append(el);
     } else {
-      const btn = h<HTMLButtonElement>('button', { type: 'button', style: `font:${font};color:${color};background:${toHex(f.buttonBg)}` }, f.label || 'Zurücksetzen');
+      const btn = h<HTMLButtonElement>('button', { type: 'button', style: `font:${font};color:${color};background:${toHex(f.buttonBg)}` }, f.label || 'Reset');
       btn.tabIndex = +tab;
       btn.addEventListener('click', () => { values.clear(); store.emit('mode'); });
       box.append(btn);
@@ -95,14 +95,14 @@ function sync(name: string, v: string | boolean, from: HTMLElement) {
 }
 
 const MSG: Record<string, string> = {
-  email: 'Bitte eine gültige E-Mail-Adresse eingeben.',
-  phone: 'Bitte eine gültige Telefonnummer eingeben.',
-  zip: 'Bitte eine gültige Postleitzahl eingeben.',
-  date: 'Bitte ein Datum im Format TT.MM.JJJJ eingeben.',
-  number: 'Bitte eine Zahl eingeben.',
+  email: 'Please enter a valid email address.',
+  phone: 'Please enter a valid phone number.',
+  zip: 'Please enter a valid postal code.',
+  date: 'Please enter a date as DD.MM.YYYY.',
+  number: 'Please enter a number.',
 };
 
-/** Prüft und formatiert wie die Acrobat-Skripte im Export. */
+/** Validates and formats like the Acrobat scripts in the export. */
 function validate(f: Field, el: HTMLInputElement | HTMLTextAreaElement) {
   let v = el.value.trim();
   let ok = true;
@@ -133,11 +133,11 @@ function validate(f: Field, el: HTMLInputElement | HTMLTextAreaElement) {
   const box = el.parentElement!;
   box.classList.toggle('invalid', !ok);
   box.querySelector('.test-msg')?.remove();
-  if (!ok) box.append(h('span.test-msg', { role: 'alert' }, MSG[f.format] ?? 'Ungültige Eingabe.'));
+  if (!ok) box.append(h('span.test-msg', { role: 'alert' }, MSG[f.format] ?? 'Invalid input.'));
 }
 
 /* ------------------------------------------------------------------ */
-/* Panel im Eigenschaften-Bereich                                      */
+/* Panel in the properties area                                        */
 /* ------------------------------------------------------------------ */
 
 export function mountTestPanel(inspector: HTMLElement) {
@@ -148,16 +148,16 @@ export function mountTestPanel(inspector: HTMLElement) {
     panel.hidden = !store.testMode;
     if (!store.testMode) return;
     const missing = store.fields.filter((f) => f.required && !values.get(f.name)).length;
-    const clear = h('button.btn.secondary', { type: 'button', onclick: () => { values.clear(); store.emit('mode'); } }, 'Eingaben leeren');
-    const done = h('button.btn.primary', { type: 'button', onclick: () => store.setTestMode(false) }, 'Zurück zum Bearbeiten');
+    const clear = h('button.btn.secondary', { type: 'button', onclick: () => { values.clear(); store.emit('mode'); } }, 'Clear inputs');
+    const done = h('button.btn.primary', { type: 'button', onclick: () => store.setTestMode(false) }, 'Back to editing');
     panel.replaceChildren(
-      h('h2.panel-title', {}, 'Formular testen'),
-      h('p.panel-lead', {}, 'Fülle das Formular so aus, wie es später im PDF-Reader funktioniert. Mit Tab springst du in der berechneten Reihenfolge von Feld zu Feld.'),
+      h('h2.panel-title', {}, 'Test the form'),
+      h('p.panel-lead', {}, 'Fill in the form the way it will work in a PDF reader. Press Tab to move from field to field in the calculated order.'),
       h('ul.test-notes', {},
-        h('li', {}, 'Formate wie Datum, E-Mail oder Zahl werden beim Verlassen eines Feldes geprüft.'),
-        h('li', {}, 'Gleichnamige Felder zeigen denselben Inhalt.'),
-        h('li', {}, missing ? `${missing} Pflichtfeld${missing === 1 ? '' : 'er'} noch leer.` : 'Alle Pflichtfelder sind ausgefüllt.')),
-      h('p.hint', {}, 'Die Eingaben werden nicht in die exportierte PDF übernommen.'),
+        h('li', {}, 'Formats like date, email or number are checked when you leave a field.'),
+        h('li', {}, 'Fields with the same name show the same content.'),
+        h('li', {}, missing ? `${missing} required ${missing === 1 ? 'field is' : 'fields are'} still empty.` : 'All required fields are filled in.')),
+      h('p.hint', {}, 'Your inputs are not included in the exported PDF.'),
       h('div.panel-actions', {}, clear, done));
   };
   store.subscribe((k) => { if (k.has('mode') || k.has('doc')) render(); });

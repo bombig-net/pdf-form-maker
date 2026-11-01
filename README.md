@@ -100,6 +100,7 @@ The region is set in the form panel (no field selected) and is saved with the fo
 npm install
 npm run dev          # development server
 npm test             # tests (detection, suggestions, export, logic, geometry, formats, performance)
+npm run test:e2e     # browser tests with Playwright (first run: npx playwright install chromium)
 npm run build        # web app in dist/
 npm run build:single # a single HTML file in dist-single/
 ```
@@ -121,6 +122,7 @@ Requires Node.js 20 or newer. The sample PDFs in `src/assets/` and the app icons
 | `src/styles.css` | Design tokens (light and dark) and editor styles |
 | `src/home.css`, `src/features.css`, `src/brand.css` | Home screen, editor extensions, “Made by” link |
 | `test/` | Vitest tests |
+| `e2e/` | Playwright browser tests |
 
 ### Deployment
 
@@ -128,7 +130,7 @@ The app is deployed to GitHub Pages on every push to `main`: [bombig-net.github.
 
 The workflow templates live in `docs/workflows/`:
 
-- `ci.yml` runs tests and the build on every push and pull request.
+- `ci.yml` runs the tests, the build and the browser tests on every push and pull request.
 - `pages.yml` builds the app on every push to `main` and publishes it to GitHub Pages.
 
 To set this up in a fork:

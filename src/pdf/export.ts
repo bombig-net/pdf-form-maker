@@ -9,6 +9,7 @@ import { rectContainsPoint } from '../util/geom';
 import { parseTag } from './detect';
 import { effectiveColor } from '../util/color';
 import { sortForTabOrder } from '../util/tabOrder';
+import { locale, type LocaleFormat } from '../util/locale';
 
 export interface ExportInput {
   docs: SourceDoc[];
@@ -103,17 +104,17 @@ function stripWidgets(lib: PDFDocument, page: PDFPage) {
 
 const jsStr = (s: string) => JSON.stringify(s);
 
-export function buildScripts(f: Field, color: RGB): { K?: string; F?: string; V?: string } {
+export function buildScripts(f: Field, color: RGB, loc: LocaleFormat = locale()): { K?: string; F?: string; V?: string } {
   const out: { K?: string; F?: string; V?: string } = {};
   let fmt = '';
   switch (f.format) {
     case 'date':
-      out.K = 'AFDate_KeystrokeEx("dd.mm.yyyy");';
-      fmt = 'AFDate_FormatEx("dd.mm.yyyy");';
+      out.K = `AFDate_KeystrokeEx("${loc.date}");`;
+      fmt = `AFDate_FormatEx("${loc.date}");`;
       break;
     case 'number':
-      out.K = 'AFNumber_Keystroke(2, 2, 0, 0, "", true);';
-      fmt = 'AFNumber_Format(2, 2, 0, 0, "", true);';
+      out.K = `AFNumber_Keystroke(2, ${loc.sepStyle}, 0, 0, "", true);`;
+      fmt = `AFNumber_Format(2, ${loc.sepStyle}, 0, 0, "", true);`;
       break;
     case 'email':
       out.V = 'if (event.value && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(event.value)) { app.alert("Please enter a valid email address."); event.rc = false; }';
@@ -123,8 +124,8 @@ export function buildScripts(f: Field, color: RGB): { K?: string; F?: string; V?
       out.V = 'if (event.value && !/^[+]?[0-9()\\/\\-\\s]{5,}$/.test(event.value)) { app.alert("Please enter a valid phone number."); event.rc = false; }';
       break;
     case 'zip':
-      out.K = 'if (!event.willCommit && event.change && !/^[0-9]*$/.test(event.change)) event.rc = false;';
-      out.V = 'if (event.value && !/^[0-9]{4,5}$/.test(event.value)) { app.alert("Please enter a valid postal code."); event.rc = false; }';
+      out.K = `if (!event.willCommit && event.change && !/${loc.zipKeys}/.test(event.change)) event.rc = false;`;
+      out.V = `if (event.value && !/${loc.zip}/.test(event.value)) { app.alert("Please enter a valid postal code."); event.rc = false; }`;
       break;
   }
   if (f.placeholder && (f.type === 'text' || f.type === 'area')) {
@@ -302,7 +303,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         }
         finalizeDA(tf.acroField, `/${res} ${f0.fontSize || 0} Tf ${fmtColor(color)} rg`);
         setTooltip(tf.acroField.dict, f0.tooltip);
-        setActions(base, tf.acroField.dict, buildScripts(f0, color));
+        setActions(base, tf.acroField.dict, buildScripts(f0, color, locale(options.locale)));
       } else if (f0.type === 'check') {
         const cb = form.createCheckBox(name);
         cb.acroField.setDefaultAppearance(`/ZaDb 0 Tf ${fmtColor(color)} rg`);

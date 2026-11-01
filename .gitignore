@@ -4,5 +4,5 @@ dist-single/
 .DS_Store
 *.log
 coverage/
-# werden beim Build/Test erzeugt (scripts/make-samples.mjs)
+# generated during build/test (scripts/make-samples.mjs)
 src/assets/*.pdf

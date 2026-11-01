@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import type { Plugin } from 'vite';
 
-/** Ersetzt das Zeichen U+FFFD in Skripten durch eine Escape-Sequenz (manche Hosts lehnen es im HTML ab). */
+/** Escapes U+FFFD in scripts (some hosts reject the raw character in HTML). */
 const escapeReplacementChar = (): Plugin => ({
   name: 'escape-fffd',
   enforce: 'post',
@@ -13,8 +13,8 @@ const escapeReplacementChar = (): Plugin => ({
   },
 });
 
-// "npm run build"        -> normale Web-App (dist/), z. B. für GitHub Pages
-// "npm run build:single" -> eine einzige HTML-Datei (dist-single/), z. B. zum Weitergeben
+// "npm run build"        -> regular web app (dist/), e.g. for GitHub Pages
+// "npm run build:single" -> a single HTML file (dist-single/), e.g. for sharing
 export default defineConfig(({ mode }) => ({
   base: './',
   build: {

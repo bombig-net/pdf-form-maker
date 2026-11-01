@@ -2,7 +2,7 @@
   "name": "pdf-form-maker",
   "private": true,
   "version": "1.0.0",
-  "description": "PDFs im Browser in ausfüllbare PDF-Formulare (AcroForms) umwandeln.",
+  "description": "Turn PDFs into fillable PDF forms (AcroForms) in the browser.",
   "type": "module",
   "scripts": {
     "predev": "npm run sample",

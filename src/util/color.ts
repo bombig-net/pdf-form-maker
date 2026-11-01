@@ -8,7 +8,7 @@ export function contrast(a: RGB, b: RGB): number {
   const l1 = luminance(a), l2 = luminance(b);
   return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 }
-/** Smart Contrast: Bei zu geringem Kontrast zum Hintergrund Schwarz oder Weiß verwenden. */
+/** Smart Contrast: use black or white if the color would be hard to read on the background. */
 export function effectiveColor(f: Pick<Field, 'color' | 'autoContrast' | 'bgColor'>): RGB {
   if (!f.autoContrast || !f.bgColor) return f.color;
   if (contrast(f.color, f.bgColor) >= 3) return f.color;

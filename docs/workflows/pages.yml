@@ -1,6 +1,6 @@
 name: Deploy to GitHub Pages
 
-# Einmalig aktivieren: Settings → Pages → Build and deployment → Source: "GitHub Actions"
+# Enable once: Settings → Pages → Build and deployment → Source: "GitHub Actions"
 on:
   push:
     branches: [main]

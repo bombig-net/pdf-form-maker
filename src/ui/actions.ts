@@ -115,7 +115,7 @@ export async function runExport(btn?: HTMLButtonElement) {
     const t0 = performance.now();
     const res = await exportPdf({
       docs: store.docs, pages: store.pages, fields: store.fields, customFonts: store.customFonts,
-      options: { hidePlaceholderLayers: store.options.hidePlaceholderLayers },
+      options: { hidePlaceholderLayers: store.options.hidePlaceholderLayers, locale: store.options.locale },
     });
     const ms = Math.round(performance.now() - t0);
     const name = `${store.fileName || 'form'}-fillable.pdf`;

@@ -16,8 +16,9 @@ export interface Project {
   pages: PageRef[];
   fields: Field[];
   customFonts: CustomFont[];
+  locale?: string;
 }
-export type ProjectSummary = Omit<Project, 'docs' | 'pages' | 'fields' | 'customFonts'>;
+export type ProjectSummary = Omit<Project, 'docs' | 'pages' | 'fields' | 'customFonts' | 'locale'>;
 
 const DB = 'pdf-form-maker';
 const STORE = 'projects';
@@ -43,7 +44,7 @@ async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBReq
 export async function listProjects(): Promise<ProjectSummary[]> {
   try {
     const all = await tx<Project[]>('readonly', (s) => s.getAll());
-    return all.map(({ docs: _d, pages: _p, fields: _f, customFonts: _c, ...rest }) => rest).sort((a, b) => b.updatedAt - a.updatedAt);
+    return all.map(({ docs: _d, pages: _p, fields: _f, customFonts: _c, locale: _l, ...rest }) => rest).sort((a, b) => b.updatedAt - a.updatedAt);
   } catch { return []; }
 }
 export async function deleteProject(id: string) {
@@ -94,6 +95,7 @@ async function save() {
     pages: structuredClone(store.pages),
     fields: structuredClone(store.fields),
     customFonts: store.customFonts.map((f) => ({ ...f })),
+    locale: store.options.locale,
   };
   try {
     await tx('readwrite', (s) => s.put(project));
@@ -113,7 +115,7 @@ export function startAutosave() {
       if (docKey() !== projectKey) { currentId = null; projectKey = docKey(); }
     }
     if (k.has('pages')) thumb = '';
-    if (!store.hasDocument || !(k.has('doc') || k.has('pages') || k.has('fields'))) return;
+    if (!store.hasDocument || !(k.has('doc') || k.has('pages') || k.has('fields') || k.has('options'))) return;
     clearTimeout(timer);
     timer = window.setTimeout(save, 600);
   });
@@ -143,6 +145,7 @@ export async function openProject(id: string): Promise<boolean> {
     store.fields = p.fields;
     store.customFonts = p.customFonts ?? [];
     store.fileName = p.name;
+    if (p.locale) store.options.locale = p.locale;
     currentId = p.id;
     projectKey = docKey();
     thumb = p.thumb;

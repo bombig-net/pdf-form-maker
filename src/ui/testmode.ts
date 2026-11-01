@@ -62,12 +62,24 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       const padPx = (2 + (store.options.formFont.padding ?? 0)) * g.scale;
       el.style.padding = f.type === 'area' ? `${padPx}px` : `0 ${padPx}px`;
       if (f.type === 'text' && f.comb && f.maxLength > 0) {
+        // One box per character: a grid of real cells shows the characters, the input underneath takes the typing.
+        // Independent of font metrics, so every character sits exactly in its box.
         el.style.padding = '';
-        // One box per character: monospace font, spacing to the box width
-        el.classList.add('comb');
-        el.style.fontFamily = FONT_STACK.Courier;
-        el.style.setProperty('--cell', `${r.width / f.maxLength}px`);
-        el.style.setProperty('--cells', String(f.maxLength));
+        el.style.color = 'transparent';
+        el.style.caretColor = 'transparent';
+        el.classList.add('comb-input');
+        const cells = h('div.comb-cells', { 'aria-hidden': 'true', style: `--cells:${f.maxLength};font:${font};color:${color}` },
+          ...Array.from({ length: f.maxLength }, () => h('span.comb-cell')));
+        const paint = () => {
+          const v = el.value, focused = document.activeElement === el;
+          Array.from(cells.children).forEach((c, i) => {
+            c.textContent = v[i] ?? '';
+            c.classList.toggle('cur', focused && i === Math.min(v.length, f.maxLength - 1));
+          });
+        };
+        for (const ev of ['input', 'focus', 'blur', 'pfm-update']) el.addEventListener(ev, paint);
+        box.append(cells);
+        queueMicrotask(paint);
       }
       el.addEventListener('beforeinput', (e) => {
         const ev = e as InputEvent;
@@ -136,7 +148,7 @@ function refreshLogic() {
       : String(Math.round(r * 100) / 100);
     values.set(f.name, text);
   }
-  for (const f of calcs) document.querySelectorAll<HTMLInputElement>(`[data-fname="${CSS.escape(f.name)}"]`).forEach((el) => { el.value = String(values.get(f.name) ?? ''); });
+  for (const f of calcs) document.querySelectorAll<HTMLInputElement>(`[data-fname="${CSS.escape(f.name)}"]`).forEach((el) => { el.value = String(values.get(f.name) ?? ''); el.dispatchEvent(new Event('pfm-update')); });
   for (const f of store.fields) {
     const box = document.querySelector<HTMLElement>(`.test-field[data-fid="${CSS.escape(f.id)}"]`);
     // Hidden fields keep covering the text underneath (e.g. the tag), like the export hides it
@@ -151,6 +163,7 @@ function sync(name: string, v: string | boolean, from: HTMLElement) {
     if (el === from) return;
     if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = v === true;
     else if (typeof v === 'string') el.value = v;
+    el.dispatchEvent(new Event('pfm-update'));
   });
 }
 

@@ -11,9 +11,10 @@ permissions:
   pages: write
   id-token: write
 
+# A running deployment is finished; of the waiting ones only the newest goes live
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -24,6 +25,8 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
+      # No deployment without green tests
+      - run: npm test
       - run: npm run build
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

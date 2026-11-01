@@ -132,3 +132,25 @@ textarea.choices:focus { outline: none; border-color: var(--accent); box-shadow:
   background-image: linear-gradient(to top, color-mix(in srgb, var(--c, #0089c4) 55%, transparent) 1px, transparent 1px);
   background-size: 100% calc(100% / var(--cells));
 }
+
+/* ---------- Collapsible sections in the properties panel ---------- */
+.acc { border-top: 1px solid var(--line); }
+.panel > .acc:first-of-type { margin-top: 14px; }
+.acc + .panel-actions { margin-top: 0; }
+.acc-head {
+  display: flex; align-items: center; gap: 8px; padding: 11px 2px; cursor: pointer; list-style: none;
+  font-size: 12.5px; font-weight: 620; color: var(--ink); user-select: none; -webkit-user-select: none; border-radius: 4px;
+}
+.acc-head::-webkit-details-marker { display: none; }
+.acc-head::before {
+  content: ''; flex: none; width: 6px; height: 6px; margin: 0 3px 0 1px;
+  border: solid var(--ink-3); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); transition: transform 0.15s;
+}
+.acc[open] > .acc-head::before { transform: rotate(45deg); }
+.acc-head:hover .acc-title { color: var(--accent); }
+.acc-meta { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; font-weight: 400; color: var(--ink-3); font-size: 12px; }
+.acc-body { padding: 2px 0 14px; }
+.acc-body > .row:first-child, .acc-body > .segmented:first-child { margin-top: 2px; }
+.acc-body > .segmented { margin-bottom: 10px; }
+.block-label { display: block; margin: 4px 0 6px; color: var(--ink-2); font-size: 13px; }
+.row-control > input[type='color'] { flex: none; }

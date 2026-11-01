@@ -4,6 +4,7 @@ import { h, icons, toast } from './dom';
 import { effectiveColor, fromHex, toHex } from '../util/color';
 import { uid, round2 } from '../util/geom';
 import type { Viewer } from './viewer';
+import { LOCALES, locale, datePattern, type LocaleId } from '../util/locale';
 
 const TYPES: { v: FieldType; label: string }[] = [
   { v: 'text', label: 'Text field' },
@@ -12,14 +13,26 @@ const TYPES: { v: FieldType; label: string }[] = [
   { v: 'radio', label: 'Radio button' },
   { v: 'reset', label: 'Reset button' },
 ];
-const FORMATS: { v: FormatKind; label: string; hint: string }[] = [
-  { v: 'none', label: 'Free text', hint: '' },
-  { v: 'email', label: 'Email', hint: 'Checks for a valid address when the field is left.' },
-  { v: 'date', label: 'Date', hint: 'Format DD.MM.YYYY – Acrobat Reader shows a date picker on mobile devices.' },
-  { v: 'phone', label: 'Phone', hint: 'Allows only digits, spaces and + ( ) / -.' },
-  { v: 'number', label: 'Number', hint: 'Number with two decimals (1.234,56).' },
-  { v: 'zip', label: 'Postal code', hint: 'Digits only, 4–5 characters.' },
+const FORMATS: { v: FormatKind; label: string }[] = [
+  { v: 'none', label: 'Free text' },
+  { v: 'email', label: 'Email' },
+  { v: 'date', label: 'Date' },
+  { v: 'phone', label: 'Phone' },
+  { v: 'number', label: 'Number' },
+  { v: 'zip', label: 'Postal code' },
 ];
+/** Hint for a format in the form's region. */
+function formatHint(f: FormatKind): string {
+  const l = locale(store.options.locale);
+  switch (f) {
+    case 'email': return 'Checks for a valid address when the field is left.';
+    case 'date': return `Format ${datePattern(l)} (${l.label}). Acrobat Reader shows a date picker on mobile devices.`;
+    case 'phone': return 'Allows only digits, spaces and + ( ) / -.';
+    case 'number': return `Number with two decimals (${l.numberExample}).`;
+    case 'zip': return l.zipHint;
+    default: return '';
+  }
+}
 
 export class Inspector {
   readonly el: HTMLElement;
@@ -84,6 +97,13 @@ export class Inspector {
     }
 
     wrap.append(h('h3.section-title', {}, 'Options'));
+    const region = h<HTMLSelectElement>('select', { name: 'locale', onchange: (e: Event) => { store.options.locale = (e.target as HTMLSelectElement).value; store.emit('options'); } },
+      ...(Object.keys(LOCALES) as LocaleId[]).map((id) => {
+        const l = LOCALES[id];
+        return h('option', { value: id, selected: id === store.options.locale }, `${l.label} \u00b7 ${datePattern(l)} \u00b7 ${l.numberExample}`);
+      }));
+    wrap.append(this.row('Region', region));
+    wrap.append(h('p.hint', {}, 'Sets the date, number and postal code formats for this form.'));
     wrap.append(this.toggle('Show tab order', store.options.showTabOrder, (v) => { store.options.showTabOrder = v; store.emit('options'); },
       'The order is calculated automatically from top left to bottom right.'));
     wrap.append(this.toggle('Snap to lines and fields', store.options.snap, (v) => { store.options.snap = v; store.emit('options'); },
@@ -152,7 +172,7 @@ export class Inspector {
       wrap.append(h('h3.section-title', {}, 'Input'));
       if (f.type === 'text') {
         const chips = h('div.chips', { role: 'radiogroup', 'aria-label': 'Purpose' });
-        const hint = h('p.hint', {}, FORMATS.find((x) => x.v === f.format)?.hint ?? '');
+        const hint = h('p.hint', {}, formatHint(f.format));
         for (const fm of FORMATS) {
           chips.append(h('button.chip', {
             type: 'button', role: 'radio', 'aria-checked': String(fm.v === f.format),

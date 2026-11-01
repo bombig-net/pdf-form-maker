@@ -123,3 +123,12 @@ textarea.choices:focus { outline: none; border-color: var(--accent); box-shadow:
 .test-field input.calc { background: color-mix(in srgb, var(--brand) 10%, transparent); cursor: default; }
 .test-field[hidden] { display: none; }
 .test-cover { position: absolute; pointer-events: none; }
+
+/* ---------- Logic badges and comb boxes on rotated pages ---------- */
+.logic-badges { position: absolute; right: 0; bottom: 0; transform: translate(35%, 55%); display: flex; gap: 2px; z-index: 1; pointer-events: none; }
+.logic-badge { font: 700 9.5px/1 var(--mono); padding: 2px 4px; border-radius: 4px; background: var(--c); color: #fff; letter-spacing: 0; }
+.logic-badge.cond { background: var(--ink-2); color: var(--paper); }
+.field.comb.v {
+  background-image: linear-gradient(to top, color-mix(in srgb, var(--c, #0089c4) 55%, transparent) 1px, transparent 1px);
+  background-size: 100% calc(100% / var(--cells));
+}

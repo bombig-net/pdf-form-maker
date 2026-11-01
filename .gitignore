@@ -8,3 +8,6 @@ coverage/
 src/assets/*.pdf
 # generated during build (scripts/make-icons.mjs)
 public/*.png
+# browser tests
+test-results/
+playwright-report/

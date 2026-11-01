@@ -23,5 +23,5 @@ export default defineConfig(({ mode }) => ({
     chunkSizeWarningLimit: 4000,
   },
   plugins: mode === 'single' ? [escapeReplacementChar(), viteSingleFile()] : [],
-  test: { testTimeout: 30000 },
+  test: { testTimeout: 30000, include: ['test/**/*.test.ts'] },
 }));

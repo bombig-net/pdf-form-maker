@@ -18,6 +18,11 @@ async function draw(page: Page, key: string, x: number, y: number, w = 110, h = 
   await page.mouse.up();
 }
 const closePanel = (page: Page) => page.locator('.inspector button[aria-label="Clear selection"]').click();
+/** Opens a collapsible section in the properties panel if it is closed. */
+async function openSection(page: Page, id: string) {
+  const d = page.locator(`.inspector details[data-sec="${id}"]`);
+  if (!(await d.evaluate((el) => (el as HTMLDetailsElement).open))) await d.locator('summary').click();
+}
 
 test('opens the sample and detects its fields', async ({ page }) => {
   await page.goto('/');
@@ -51,11 +56,13 @@ test('calculates and shows conditional fields in test mode', async ({ page }) =>
   await draw(page, 't', 560, 140); await name('Qty'); await closePanel(page);
   await draw(page, 't', 700, 140); await name('Price'); await closePanel(page);
   await draw(page, 't', 840, 140); await name('Total');
+  await openSection(page, 'f:calc');
   await page.locator('select[name=calcOp]').selectOption('formula');
   await page.locator('input[name=formula]').fill('Qty * Price');
   await expect(page.locator('.field .logic-badge', { hasText: 'fx' })).toHaveCount(1);
   await closePanel(page);
   await page.locator('.field-row', { hasText: 'Notes' }).click();
+  await openSection(page, 'f:visibility');
   await page.locator('select[name=showIf]').selectOption({ label: 'Only if Newsletter is checked' });
   await expect(page.locator('.field .logic-badge', { hasText: 'if' })).toHaveCount(1);
   await page.keyboard.press('Control+e');
@@ -92,6 +99,7 @@ test('keeps recent forms and project files', async ({ page }) => {
   await page.locator('.field-row', { hasText: 'Company' }).click();
   await page.locator('input[name=name]').fill('Firm');
   await closePanel(page);
+  await openSection(page, 'doc:project');
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save project file' }).click();
   const projectFile = await (await download).path();
@@ -104,4 +112,24 @@ test('keeps recent forms and project files', async ({ page }) => {
   await expect(page.locator('.field-row', { hasText: 'Firm' })).toHaveCount(1);
   await page.getByRole('button', { name: 'Back to home' }).click();
   await expect(page.locator('.recent-card')).toHaveCount(2);
+});
+
+test('applies one form font to all fields, with per-field exceptions', async ({ page }) => {
+  await openFile(page, sample('sample-layers.pdf'));
+  await page.locator('dialog.modal .btn.primary').click();
+  await openSection(page, 'doc:font');
+  const size = page.locator('input[name=formFontSize]');
+  await size.fill('');
+  await size.pressSequentially('12.5');
+  await expect(size).toHaveValue('12.5');
+  await expect(size).toBeFocused();
+  await page.locator('.field-row', { hasText: 'FirstName' }).first().click();
+  await openSection(page, 'f:font');
+  await expect(page.locator('.acc[data-sec="f:font"] .acc-meta')).toHaveText('Form font');
+  await page.locator('.acc[data-sec="f:font"] .toggle-row', { hasText: 'Own font settings' }).locator('label').click();
+  await page.locator('input[name=fontSize]').fill('16');
+  await closePanel(page);
+  await expect(page.locator('.acc[data-sec="doc:font"] .hint').first()).toContainText('2 fields use their own');  // FirstName exists on two pages (synced)
+  await page.getByRole('button', { name: 'Use the form font everywhere' }).click();
+  await expect(page.locator('.acc[data-sec="doc:font"] .hint').first()).toContainText('Applies to every field');
 });

@@ -10,7 +10,7 @@ import { parseTag } from './detect';
 import { effectiveColor } from '../util/color';
 import { sortForTabOrder } from '../util/tabOrder';
 import { locale, type LocaleFormat } from '../util/locale';
-import { calcScript, conditionScripts, mailScript } from './logic';
+import { buttonScript, calcScript, conditionScripts } from './logic';
 
 export interface ExportInput {
   docs: SourceDoc[];
@@ -372,8 +372,9 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
           finalizeDA(btn.acroField, `/${res} ${f.fontSize || 0} Tf ${fmtColor(effectiveColor({ ...f, bgColor: f.buttonBg }))} rg`);
           const ws = btn.acroField.getWidgets();
           const hideAll = placed.filter((x) => x.showIf?.field).map((x) => `this.getField(${JSON.stringify(sanitizeName(x.name))}).display = display.hidden;`).join('\n');
-          const action = f.buttonAction === 'email'
-            ? base.context.obj({ S: 'JavaScript', JS: PDFHexString.fromText(mailScript(f.mailTo ?? '', f.mailSubject ?? '')) })
+          const js = buttonScript(f.buttonAction, f.mailTo ?? '', f.mailSubject ?? '');
+          const action = js
+            ? base.context.obj({ S: 'JavaScript', JS: PDFHexString.fromText(js) })
             : base.context.obj(hideAll ? { S: 'ResetForm', Next: base.context.obj({ S: 'JavaScript', JS: PDFHexString.fromText(hideAll) }) } : { S: 'ResetForm' });
           ws[ws.length - 1].dict.set(N('A'), action);
           setTooltip(btn.acroField.dict, f.tooltip || f.label);

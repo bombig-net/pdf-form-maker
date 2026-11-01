@@ -234,3 +234,45 @@ describe('Dropdown and comb fields', () => {
     expect(tf.getMaxLength()).toBe(8);
   });
 });
+
+describe('Calculations, conditions and buttons', () => {
+  it('parses and evaluates formulas', async () => {
+    const { parseFormula, evalFormula } = await import('../src/pdf/logic');
+    const v: Record<string, number> = { Quantity: 3, Price: 2.5 };
+    expect(evalFormula(parseFormula('Quantity * Price * 1,19'), (n) => v[n])).toBeCloseTo(8.925);
+    expect(evalFormula(parseFormula('-(Quantity - 5) / 0'), (n) => v[n])).toBe(0);
+    expect(() => parseFormula('Quantity * Unknown', new Set(['Quantity']))).toThrow(/Unknown/);
+    expect(() => parseFormula('alert(1);')).toThrow();
+  });
+  it('exports calculations, visibility rules and an email button', async () => {
+    const { doc, pages, fields } = await prepare('sample-tags.pdf');
+    const { newField } = await import('../src/pdf/detect');
+    const qty = newField('text', 'p0', { x: 300, y: 760, w: 60, h: 20 }, 'Qty');
+    const total = newField('text', 'p0', { x: 380, y: 760, w: 80, h: 20 }, 'Total');
+    total.calc = { op: 'formula', formula: 'Qty * 2' };
+    const sum = newField('text', 'p0', { x: 470, y: 760, w: 80, h: 20 }, 'Sum');
+    sum.calc = { op: 'sum', fields: ['Qty', 'Total'] };
+    fields.find((f) => f.name === 'Notes')!.showIf = { field: 'Newsletter' };
+    const send = newField('reset', 'p0', { x: 56, y: 380, w: 120, h: 24 }, 'Send');
+    Object.assign(send, { buttonAction: 'email', mailTo: 'forms@example.com', mailSubject: 'Order', label: 'Send form' });
+    const res = await exportPdf({ docs: [doc], pages, fields: [...fields, qty, total, sum, send], customFonts: [], options: { hidePlaceholderLayers: false } });
+    expect(res.warnings).toEqual([]);
+    const out = await PDFDocument.load(res.bytes);
+    const form = out.getForm();
+    const js = (d: import('pdf-lib').PDFDict, key: string) => {
+      const aa = d.lookup(PDFName.of('AA')) as import('pdf-lib').PDFDict | undefined;
+      const a = aa?.lookup(PDFName.of(key)) as import('pdf-lib').PDFDict | undefined;
+      return (a?.lookup(PDFName.of('JS')) as { decodeText(): string } | undefined)?.decodeText() ?? '';
+    };
+    expect(js(form.getTextField('Total').acroField.dict, 'C')).toContain('AFMakeNumber(this.getField("Qty").value) * 2');
+    expect(js(form.getTextField('Sum').acroField.dict, 'C')).toContain('AFSimple_Calculate("SUM", new Array("Qty", "Total"))');
+    expect(form.getTextField('Total').isReadOnly()).toBe(true);
+    const co = form.acroForm.dict.lookup(PDFName.of('CO')) as import('pdf-lib').PDFArray;
+    expect(co.size()).toBe(2);
+    const notesWidget = form.getTextField('Notes').acroField.getWidgets()[0];
+    expect((notesWidget.dict.lookup(PDFName.of('F')) as import('pdf-lib').PDFNumber).asNumber() & 2).toBe(2);
+    expect(js(form.getCheckBox('Newsletter').acroField.getWidgets()[0].dict, 'U')).toContain('this.getField("Notes").display');
+    const btn = form.getButton('Send').acroField.getWidgets()[0].dict.lookup(PDFName.of('A')) as import('pdf-lib').PDFDict;
+    expect((btn.lookup(PDFName.of('JS')) as { decodeText(): string }).decodeText()).toContain('mailDoc');
+  });
+});

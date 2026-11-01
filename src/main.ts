@@ -13,42 +13,42 @@ import { mountTestPanel } from './ui/testmode';
 import { copySelection, cutSelection, paste } from './ui/clipboard';
 import { preflight } from './ui/preflight';
 import { mountEmptyHelp } from './ui/help';
-import sampleLayers from './assets/beispiel-ebenen.pdf?inline';
+import sampleLayers from './assets/sample-layers.pdf?inline';
 
 const app = document.getElementById('app')!;
 
 /* ------------------------------------------------------------------ */
-/* Startseite                                                          */
+/* Start page                                                          */
 /* ------------------------------------------------------------------ */
 
 const TAGS: [string, string, string][] = [
-  ['text', '[Form_Text_Name]', 'Textfeld'],
-  ['area', '[Form_Area_Nachricht]', 'Mehrzeiliges Textfeld'],
-  ['check', '[Form_Check_AGB]', 'Checkbox'],
-  ['radio', '[Form_Radio_Anrede_Frau]', 'Radio-Button: Gruppe, dann Wert'],
+  ['text', '[Form_Text_Name]', 'Text field'],
+  ['area', '[Form_Area_Message]', 'Multi-line text field'],
+  ['check', '[Form_Check_Terms]', 'Checkbox'],
+  ['radio', '[Form_Radio_Salutation_Ms]', 'Radio button: group, then value'],
 ];
 
 function buildStart(): HTMLElement {
   const fileIn = h<HTMLInputElement>('input', { type: 'file', accept: 'application/pdf,.pdf', hidden: true });
   fileIn.addEventListener('change', async () => { if (fileIn.files?.length) await openPdfs(await filesFromList(fileIn.files), 'replace'); fileIn.value = ''; });
-  const pick = h('button.btn.primary.lg', { type: 'button', onclick: () => fileIn.click() }, 'PDF auswählen');
-  const sample = h('button.btn.ghost.lg', { type: 'button', onclick: () => openPdfs([{ name: 'beispiel-ebenen.pdf', bytes: dataUriToBytes(sampleLayers) }], 'replace') }, 'Beispiel öffnen');
+  const pick = h('button.btn.primary.lg', { type: 'button', onclick: () => fileIn.click() }, 'Choose PDF');
+  const sample = h('button.btn.ghost.lg', { type: 'button', onclick: () => openPdfs([{ name: 'sample-layers.pdf', bytes: dataUriToBytes(sampleLayers) }], 'replace') }, 'Open sample');
 
   const sheet = h('section.sheet', { 'aria-labelledby': 'start-title' },
     h('span.crop.tl'), h('span.crop.tr'), h('span.crop.bl'), h('span.crop.br'),
     h('div.sheet-inner', {},
       h('p.mark', {}, h('span.ink.c'), h('span.ink.m'), h('span.ink.y'), h('span.ink.k'), h('span.mark-name', {}, 'PDF Form Maker')),
-      h('h1', { id: 'start-title' }, 'Aus deiner PDF wird ein ausfüllbares Formular.'),
-      h('p.lead', {}, 'Zieh eine PDF hierher. Benannte Platzhalter werden automatisch zu echten Formularfeldern. Danach kannst du sie anpassen, ergänzen und prüfen oder Felder direkt auf der Seite aufziehen.'),
+      h('h1', { id: 'start-title' }, 'Turn your PDF into a fillable form.'),
+      h('p.lead', {}, 'Drop a PDF here. Named placeholders automatically become real form fields. Then adjust, add and check them, or draw fields directly on the page.'),
       h('div.start-actions', {}, pick, sample),
-      h('p.privacy', {}, 'Die Datei bleibt auf deinem Gerät. Nichts wird hochgeladen.'),
+      h('p.privacy', {}, 'Your file stays on your device. Nothing is uploaded.'),
       fileIn));
 
   const legend = h('aside.legend', { 'aria-labelledby': 'legend-title' },
-    h('h2', { id: 'legend-title' }, 'So benennst du Platzhalter'),
-    h('p', {}, 'Zeichne in deinem Layoutprogramm ein Rechteck dort, wo das Feld hin soll, und schreib einen dieser Tags als Text hinein:'),
+    h('h2', { id: 'legend-title' }, 'How to name placeholders'),
+    h('p', {}, 'In your layout app, draw a rectangle where the field should go and type one of these tags inside it as text:'),
     h('ul.tag-list', {}, ...TAGS.map(([t, code, desc]) => h('li', { 'data-type': t }, h('span.dot'), h('code', {}, code), h('span', {}, desc)))),
-    h('p.small', {}, 'Der Tag wird beim Export automatisch entfernt. Alternativ kannst du das Rechteck auf eine Ebene mit diesem Namen legen, sofern dein Programm Ebenen in die PDF exportiert.'));
+    h('p.small', {}, 'The tag is removed automatically on export. Alternatively, put the rectangle on a layer with that name, as long as your app exports layers to the PDF.'));
 
   const start = h('main.start', {}, sheet, legend);
   bindDrop(start, 'replace');
@@ -80,12 +80,12 @@ function bindDrop(el: HTMLElement, mode: 'replace' | 'append') {
 /* ------------------------------------------------------------------ */
 
 const TOOLS: { t: Tool; label: string; key: string }[] = [
-  { t: 'select', label: 'Auswählen', key: 'V' },
-  { t: 'text', label: 'Textfeld', key: 'T' },
-  { t: 'area', label: 'Textbereich', key: 'A' },
+  { t: 'select', label: 'Select', key: 'V' },
+  { t: 'text', label: 'Text field', key: 'T' },
+  { t: 'area', label: 'Text area', key: 'A' },
   { t: 'check', label: 'Checkbox', key: 'C' },
-  { t: 'radio', label: 'Radio-Button', key: 'R' },
-  { t: 'reset', label: 'Zurücksetzen-Button', key: 'B' },
+  { t: 'radio', label: 'Radio button', key: 'R' },
+  { t: 'reset', label: 'Reset button', key: 'B' },
 ];
 
 function buildEditor(): HTMLElement {
@@ -94,47 +94,47 @@ function buildEditor(): HTMLElement {
   const openIn = h<HTMLInputElement>('input', { type: 'file', accept: 'application/pdf,.pdf', hidden: true });
   openIn.addEventListener('change', async () => { if (openIn.files?.length) await openPdfs(await filesFromList(openIn.files), 'replace'); openIn.value = ''; });
 
-  const viewerEl = h('section.viewer', { 'aria-label': 'Dokument', 'data-tool': 'select' });
+  const viewerEl = h('section.viewer', { 'aria-label': 'Document', 'data-tool': 'select' });
   const viewer = new Viewer(viewerEl);
-  const railEl = h('aside.rail', { 'aria-label': 'Seitenverwaltung' });
+  const railEl = h('aside.rail', { 'aria-label': 'Page management' });
   new PagesRail(railEl, viewer, () => mergeIn.click());
-  const inspEl = h('aside.inspector', { 'aria-label': 'Eigenschaften' });
+  const inspEl = h('aside.inspector', { 'aria-label': 'Properties' });
   new Inspector(inspEl, viewer);
   mountMultiPanel(inspEl, viewer);
   mountTestPanel(inspEl);
   mountEmptyHelp(viewerEl);
 
-  // Werkzeuge
-  const tools = h('div.tools', { role: 'toolbar', 'aria-label': 'Werkzeuge' });
+  // Tools
+  const tools = h('div.tools', { role: 'toolbar', 'aria-label': 'Tools' });
   for (const { t, label, key } of TOOLS) {
     const b = h('button.tool', { type: 'button', 'data-tool': t, 'aria-pressed': String(store.tool === t), title: `${label} (${key})`, 'aria-label': label, onclick: () => store.setTool(t) });
     b.innerHTML = icons[t];
     tools.append(b);
   }
 
-  const undo = h<HTMLButtonElement>('button.icon-btn', { type: 'button', title: 'Rückgängig (⌘/Strg Z)', 'aria-label': 'Rückgängig', onclick: () => store.undo(), disabled: true });
+  const undo = h<HTMLButtonElement>('button.icon-btn', { type: 'button', title: 'Undo (⌘/Ctrl Z)', 'aria-label': 'Undo', onclick: () => store.undo(), disabled: true });
   undo.innerHTML = icons.undo;
-  const redo = h<HTMLButtonElement>('button.icon-btn', { type: 'button', title: 'Wiederholen (⇧⌘/Strg Z)', 'aria-label': 'Wiederholen', onclick: () => store.redo(), disabled: true });
+  const redo = h<HTMLButtonElement>('button.icon-btn', { type: 'button', title: 'Redo (⇧⌘/Ctrl Z)', 'aria-label': 'Redo', onclick: () => store.redo(), disabled: true });
   redo.innerHTML = icons.redo;
 
-  const zoomOut = h('button.icon-btn', { type: 'button', 'aria-label': 'Verkleinern', title: 'Verkleinern', onclick: () => viewer.zoomAt(store.zoom / 1.2) });
+  const zoomOut = h('button.icon-btn', { type: 'button', 'aria-label': 'Zoom out', title: 'Zoom out', onclick: () => viewer.zoomAt(store.zoom / 1.2) });
   zoomOut.innerHTML = icons.minus;
-  const zoomIn = h('button.icon-btn', { type: 'button', 'aria-label': 'Vergrößern', title: 'Vergrößern', onclick: () => viewer.zoomAt(store.zoom * 1.2) });
+  const zoomIn = h('button.icon-btn', { type: 'button', 'aria-label': 'Zoom in', title: 'Zoom in', onclick: () => viewer.zoomAt(store.zoom * 1.2) });
   zoomIn.innerHTML = icons.plus;
-  const zoomLabel = h('button.zoom-label', { type: 'button', title: 'An Breite anpassen', onclick: () => viewer.fitWidth() }, '100 %');
+  const zoomLabel = h('button.zoom-label', { type: 'button', title: 'Fit to width', onclick: () => viewer.fitWidth() }, '100 %');
 
   const doExport = async () => { if (store.testMode) store.setTestMode(false); if (await preflight(viewer)) await runExport(exportBtn); };
   const exportBtn = h<HTMLButtonElement>('button.btn.primary.export', { type: 'button', onclick: doExport });
-  const testBtn = h<HTMLButtonElement>('button.btn.secondary.test-toggle', { type: 'button', 'aria-pressed': 'false', title: 'Formular in der App ausfüllen (Strg/⌘ E)', onclick: () => { store.setTestMode(!store.testMode); if (store.testMode) { inspEl.classList.add('open'); railEl.classList.remove('open'); } } });
-  testBtn.innerHTML = `${svg('<path d="M7 5l12 7-12 7z"/>')}<span>Testen</span>`;
-  exportBtn.innerHTML = `${icons.download}<span>PDF exportieren</span>`;
+  const testBtn = h<HTMLButtonElement>('button.btn.secondary.test-toggle', { type: 'button', 'aria-pressed': 'false', title: 'Fill in the form inside the app (Ctrl/⌘ E)', onclick: () => { store.setTestMode(!store.testMode); if (store.testMode) { inspEl.classList.add('open'); railEl.classList.remove('open'); } } });
+  testBtn.innerHTML = `${svg('<path d="M7 5l12 7-12 7z"/>')}<span>Test</span>`;
+  exportBtn.innerHTML = `${icons.download}<span>Export PDF</span>`;
 
-  const pagesToggle = h('button.icon-btn.only-narrow', { type: 'button', 'aria-label': 'Seiten anzeigen', title: 'Seiten', onclick: () => { railEl.classList.toggle('open'); inspEl.classList.remove('open'); } });
+  const pagesToggle = h('button.icon-btn.only-narrow', { type: 'button', 'aria-label': 'Show pages', title: 'Pages', onclick: () => { railEl.classList.toggle('open'); inspEl.classList.remove('open'); } });
   pagesToggle.innerHTML = icons.pages;
-  const propsToggle = h('button.icon-btn.only-narrow', { type: 'button', 'aria-label': 'Eigenschaften anzeigen', title: 'Eigenschaften', onclick: () => { inspEl.classList.toggle('open'); railEl.classList.remove('open'); } });
+  const propsToggle = h('button.icon-btn.only-narrow', { type: 'button', 'aria-label': 'Show properties', title: 'Properties', onclick: () => { inspEl.classList.toggle('open'); railEl.classList.remove('open'); } });
   propsToggle.innerHTML = icons.sliders;
 
-  const back = h('button.icon-btn', { type: 'button', title: 'Andere PDF öffnen', 'aria-label': 'Andere PDF öffnen', onclick: () => openIn.click() });
+  const back = h('button.icon-btn', { type: 'button', title: 'Open another PDF', 'aria-label': 'Open another PDF', onclick: () => openIn.click() });
   back.innerHTML = icons.back;
 
   const title = h('span.doc-title');
@@ -155,15 +155,15 @@ function buildEditor(): HTMLElement {
     if (k.has('mode') || k.has('doc')) {
       editor.classList.toggle('testing', store.testMode);
       testBtn.setAttribute('aria-pressed', String(store.testMode));
-      testBtn.querySelector('span')!.textContent = store.testMode ? 'Bearbeiten' : 'Testen';
+      testBtn.querySelector('span')!.textContent = store.testMode ? 'Edit' : 'Test';
     }
     if (k.has('selection') && store.selectedId && window.matchMedia('(max-width: 899px)').matches) {
-      // auf schmalen Bildschirmen Eigenschaften nicht automatisch aufklappen – nur Hinweis per Badge
+      // on narrow screens don't open properties automatically – just hint via the button
       propsToggle.classList.add('pulse'); setTimeout(() => propsToggle.classList.remove('pulse'), 900);
     }
   });
 
-  // Tastatur
+  // Keyboard
   window.addEventListener('keydown', (e) => {
     if (!store.hasDocument) return;
     const mod = e.metaKey || e.ctrlKey;
@@ -198,7 +198,7 @@ function buildEditor(): HTMLElement {
     if (tool) store.setTool(tool.t);
   });
 
-  // Erstes Laden: an Breite anpassen
+  // First load: fit to width
   store.subscribe((k) => { if (k.has('doc') && store.hasDocument) requestAnimationFrame(() => viewer.fitWidth()); });
   window.addEventListener('resize', () => { if (window.matchMedia('(min-width: 900px)').matches) { railEl.classList.remove('open'); inspEl.classList.remove('open'); } });
   viewerEl.addEventListener('pointerdown', () => { railEl.classList.remove('open'); });
@@ -217,8 +217,8 @@ store.subscribe((k) => {
   else if (!store.hasDocument && editor.isConnected) editor.replaceWith(start);
 });
 
-// Dateien, die neben die Ablagefläche fallen, sollen den Browser nicht verlassen
+// Files dropped next to the drop zone must not navigate the browser away
 window.addEventListener('dragover', (e) => e.preventDefault());
 window.addEventListener('drop', (e) => e.preventDefault());
 
-initPdfjs().catch(() => toast('Die PDF-Darstellung konnte nicht geladen werden. Lade die Seite neu.', 'error', 10000));
+initPdfjs().catch(() => toast('The PDF renderer could not be loaded. Please reload the page.', 'error', 10000));

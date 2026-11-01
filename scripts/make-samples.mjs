@@ -1,6 +1,6 @@
-// Erzeugt Beispiel-PDFs, die einen Affinity-Export nachbilden:
-//  - beispiel-ebenen.pdf: Platzhalter als PDF-Ebenen (Optional Content Groups) mit Namen [Form_TYP_Name]
-//  - beispiel-tags.pdf:   Platzhalter mit Text-Tags [Form_TYP_Name] im Rechteck
+// Generates sample PDFs that mimic a typical layout export:
+//  - sample-layers.pdf: placeholders as PDF layers (optional content groups) named [Form_TYPE_Name]
+//  - sample-tags.pdf:   placeholders with text tags [Form_TYPE_Name] inside rectangles
 import { PDFDocument, StandardFonts, rgb, PDFName, PDFOperator, PDFHexString } from 'pdf-lib';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
@@ -41,44 +41,44 @@ async function layers() {
   };
 
   const p = page1;
-  p.drawText('Anmeldung', { x: 56, y: 770, size: 26, font: bold, color: ACCENT });
-  p.drawText('Bitte vollständig ausfüllen und zurücksenden.', { x: 56, y: 748, size: 10, font: reg, color: INK });
+  p.drawText('Registration', { x: 56, y: 770, size: 26, font: bold, color: ACCENT });
+  p.drawText('Please fill in all fields and send the form back.', { x: 56, y: 748, size: 10, font: reg, color: INK });
 
-  p.drawText('Vorname', { x: 56, y: 700, size: 9, font: bold, color: INK });
-  withLayer(p, '[Form_Text_Vorname]', () => p.drawRectangle({ x: 56, y: 670, width: 230, height: 24, color: rgb(0.96, 0.96, 0.97), borderColor: LINE, borderWidth: 0.75 }));
-  p.drawText('Hier Vorname eintragen', { x: 62, y: 678, size: 11, font: reg, color: rgb(0.6, 0.6, 0.62) });
+  p.drawText('First name', { x: 56, y: 700, size: 9, font: bold, color: INK });
+  withLayer(p, '[Form_Text_FirstName]', () => p.drawRectangle({ x: 56, y: 670, width: 230, height: 24, color: rgb(0.96, 0.96, 0.97), borderColor: LINE, borderWidth: 0.75 }));
+  p.drawText('Enter your first name', { x: 62, y: 678, size: 11, font: reg, color: rgb(0.6, 0.6, 0.62) });
 
-  p.drawText('Nachname', { x: 309, y: 700, size: 9, font: bold, color: INK });
-  withLayer(p, '[Form_Text_Nachname]', () => p.drawRectangle({ x: 309, y: 670, width: 230, height: 24, color: rgb(0.96, 0.96, 0.97), borderColor: LINE, borderWidth: 0.75 }));
+  p.drawText('Last name', { x: 309, y: 700, size: 9, font: bold, color: INK });
+  withLayer(p, '[Form_Text_LastName]', () => p.drawRectangle({ x: 309, y: 670, width: 230, height: 24, color: rgb(0.96, 0.96, 0.97), borderColor: LINE, borderWidth: 0.75 }));
 
-  p.drawText('E-Mail', { x: 56, y: 640, size: 9, font: bold, color: INK });
+  p.drawText('Email', { x: 56, y: 640, size: 9, font: bold, color: INK });
   withLayer(p, '[Form_Text_Email]', () => p.drawRectangle({ x: 56, y: 610, width: 483, height: 24, color: rgb(0.96, 0.96, 0.97), borderColor: LINE, borderWidth: 0.75 }));
 
-  p.drawText('Anrede', { x: 56, y: 580, size: 9, font: bold, color: INK });
-  withLayer(p, '[Form_Radio_Anrede_Frau]', () => p.drawCircle({ x: 63, y: 562, size: 6, borderColor: INK, borderWidth: 0.75 }));
-  p.drawText('Frau', { x: 75, y: 558, size: 10, font: reg, color: INK });
-  withLayer(p, '[Form_Radio_Anrede_Herr]', () => p.drawCircle({ x: 123, y: 562, size: 6, borderColor: INK, borderWidth: 0.75 }));
-  p.drawText('Herr', { x: 135, y: 558, size: 10, font: reg, color: INK });
-  withLayer(p, '[Form_Radio_Anrede_Divers]', () => p.drawCircle({ x: 183, y: 562, size: 6, borderColor: INK, borderWidth: 0.75 }));
-  p.drawText('Divers', { x: 195, y: 558, size: 10, font: reg, color: INK });
+  p.drawText('Salutation', { x: 56, y: 580, size: 9, font: bold, color: INK });
+  withLayer(p, '[Form_Radio_Salutation_Ms]', () => p.drawCircle({ x: 63, y: 562, size: 6, borderColor: INK, borderWidth: 0.75 }));
+  p.drawText('Ms', { x: 75, y: 558, size: 10, font: reg, color: INK });
+  withLayer(p, '[Form_Radio_Salutation_Mr]', () => p.drawCircle({ x: 123, y: 562, size: 6, borderColor: INK, borderWidth: 0.75 }));
+  p.drawText('Mr', { x: 135, y: 558, size: 10, font: reg, color: INK });
+  withLayer(p, '[Form_Radio_Salutation_Mx]', () => p.drawCircle({ x: 183, y: 562, size: 6, borderColor: INK, borderWidth: 0.75 }));
+  p.drawText('Mx', { x: 195, y: 558, size: 10, font: reg, color: INK });
 
-  p.drawText('Nachricht', { x: 56, y: 525, size: 11, font: serif, color: INK });
-  withLayer(p, '[Form_Area_Nachricht]', () => p.drawRectangle({ x: 56, y: 400, width: 483, height: 118, color: rgb(0.96, 0.96, 0.97), borderColor: LINE, borderWidth: 0.75 }));
+  p.drawText('Message', { x: 56, y: 525, size: 11, font: serif, color: INK });
+  withLayer(p, '[Form_Area_Message]', () => p.drawRectangle({ x: 56, y: 400, width: 483, height: 118, color: rgb(0.96, 0.96, 0.97), borderColor: LINE, borderWidth: 0.75 }));
 
-  // Dunkle Fläche (Smart Contrast)
+  // Dark area (Smart Contrast)
   p.drawRectangle({ x: 40, y: 250, width: 515, height: 120, color: ACCENT });
-  p.drawText('Mitgliedsnummer', { x: 56, y: 340, size: 9, font: bold, color: rgb(1, 1, 1) });
-  withLayer(p, '[Form_Text_Mitgliedsnummer]', () => p.drawRectangle({ x: 56, y: 305, width: 230, height: 26, borderColor: rgb(1, 1, 1), borderWidth: 0.75, opacity: 1 }));
+  p.drawText('Member number', { x: 56, y: 340, size: 9, font: bold, color: rgb(1, 1, 1) });
+  withLayer(p, '[Form_Text_MemberNumber]', () => p.drawRectangle({ x: 56, y: 305, width: 230, height: 26, borderColor: rgb(1, 1, 1), borderWidth: 0.75, opacity: 1 }));
 
-  withLayer(p, '[Form_Check_AGB]', () => p.drawRectangle({ x: 56, y: 200, width: 12, height: 12, borderColor: INK, borderWidth: 0.75 }));
-  p.drawText('Ich akzeptiere die Teilnahmebedingungen.', { x: 76, y: 202, size: 10, font: reg, color: INK });
+  withLayer(p, '[Form_Check_Terms]', () => p.drawRectangle({ x: 56, y: 200, width: 12, height: 12, borderColor: INK, borderWidth: 0.75 }));
+  p.drawText('I accept the terms of participation.', { x: 76, y: 202, size: 10, font: reg, color: INK });
 
-  // Seite 2 – gleicher Feldname wie auf Seite 1 (Multi-Page)
-  page2.drawText('Projekt', { x: 56, y: 770, size: 26, font: bold, color: ACCENT });
-  page2.drawText('Vorname', { x: 56, y: 700, size: 9, font: bold, color: INK });
-  withLayer(page2, '[Form_Text_Vorname]', () => page2.drawRectangle({ x: 56, y: 670, width: 230, height: 24, borderColor: LINE, borderWidth: 0.75 }));
-  page2.drawText('Projektname', { x: 56, y: 640, size: 9, font: bold, color: INK });
-  withLayer(page2, '[Form_Text_Projektname]', () => page2.drawRectangle({ x: 56, y: 610, width: 483, height: 24, borderColor: LINE, borderWidth: 0.75 }));
+  // Page 2 – same field name as on page 1 (multi-page)
+  page2.drawText('Project', { x: 56, y: 770, size: 26, font: bold, color: ACCENT });
+  page2.drawText('First name', { x: 56, y: 700, size: 9, font: bold, color: INK });
+  withLayer(page2, '[Form_Text_FirstName]', () => page2.drawRectangle({ x: 56, y: 670, width: 230, height: 24, borderColor: LINE, borderWidth: 0.75 }));
+  page2.drawText('Project name', { x: 56, y: 640, size: 9, font: bold, color: INK });
+  withLayer(page2, '[Form_Text_ProjectName]', () => page2.drawRectangle({ x: 56, y: 610, width: 483, height: 24, borderColor: LINE, borderWidth: 0.75 }));
 
   for (const [page, m] of props) {
     const d = doc.context.obj({});
@@ -86,7 +86,7 @@ async function layers() {
     page.node.Resources().set(PDFName.of('Properties'), d);
   }
   doc.catalog.set(PDFName.of('OCProperties'), doc.context.obj({ OCGs: ocgRefs, D: { Order: ocgRefs, ON: ocgRefs } }));
-  writeFileSync(`${out}/beispiel-ebenen.pdf`, await doc.save());
+  writeFileSync(`${out}/sample-layers.pdf`, await doc.save());
 }
 
 async function tags() {
@@ -95,25 +95,24 @@ async function tags() {
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const mono = await doc.embedFont(StandardFonts.Courier);
   const p = doc.addPage([595.28, 841.89]);
-  p.drawText('Bestellung', { x: 56, y: 770, size: 26, font: bold, color: ACCENT });
-  p.drawText('Firma', { x: 56, y: 700, size: 9, font: bold, color: INK });
+  p.drawText('Order', { x: 56, y: 770, size: 26, font: bold, color: ACCENT });
+  p.drawText('Company', { x: 56, y: 700, size: 9, font: bold, color: INK });
   p.drawRectangle({ x: 56, y: 670, width: 483, height: 24, borderColor: LINE, borderWidth: 0.75 });
-  p.drawText('[Form_Text_Firma]', { x: 62, y: 678, size: 12, font: reg, color: rgb(0.2, 0.2, 0.6) });
-  p.drawText('Kundennummer', { x: 56, y: 640, size: 9, font: bold, color: INK });
+  p.drawText('[Form_Text_Company]', { x: 62, y: 678, size: 12, font: reg, color: rgb(0.2, 0.2, 0.6) });
+  p.drawText('Customer number', { x: 56, y: 640, size: 9, font: bold, color: INK });
   p.drawRectangle({ x: 56, y: 610, width: 200, height: 24, borderColor: LINE, borderWidth: 0.75 });
-  p.drawText('[Form_Text_Kundennummer]', { x: 62, y: 618, size: 11, font: mono, color: INK });
-  p.drawText('Datum', { x: 280, y: 640, size: 9, font: bold, color: INK });
+  p.drawText('[Form_Text_CustomerNumber]', { x: 62, y: 618, size: 11, font: mono, color: INK });
+  p.drawText('Date', { x: 280, y: 640, size: 9, font: bold, color: INK });
   p.drawRectangle({ x: 280, y: 610, width: 120, height: 24, borderColor: LINE, borderWidth: 0.75 });
-  p.drawText('[Form_Text_Datum]', { x: 286, y: 618, size: 10, font: reg, color: INK });
+  p.drawText('[Form_Text_Date]', { x: 286, y: 618, size: 10, font: reg, color: INK });
   p.drawRectangle({ x: 56, y: 570, width: 12, height: 12, borderColor: INK, borderWidth: 0.75 });
   p.drawText('[Form_Check_Newsletter]', { x: 76, y: 572, size: 9, font: reg, color: INK });
-  p.drawText('Bemerkungen', { x: 56, y: 540, size: 9, font: bold, color: INK });
+  p.drawText('Notes', { x: 56, y: 540, size: 9, font: bold, color: INK });
   p.drawRectangle({ x: 56, y: 420, width: 483, height: 112, borderColor: LINE, borderWidth: 0.75 });
-  p.drawText('[Form_Area_Bemerkungen]', { x: 62, y: 518, size: 10, font: reg, color: INK });
-  p.drawText('Optional: Wünsche zur Lieferung', { x: 62, y: 504, size: 10, font: reg, color: rgb(0.6, 0.6, 0.62) });
-  writeFileSync(`${out}/beispiel-tags.pdf`, await doc.save());
+  p.drawText('[Form_Area_Notes]', { x: 62, y: 518, size: 10, font: reg, color: INK });
+  p.drawText('Optional: delivery instructions', { x: 62, y: 504, size: 10, font: reg, color: rgb(0.6, 0.6, 0.62) });
+  writeFileSync(`${out}/sample-tags.pdf`, await doc.save());
 }
 
 await layers();
 await tags();
-

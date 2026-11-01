@@ -455,7 +455,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
   }
 
   // Filled-in copy: values from test mode, conditional fields shown or removed accordingly
-  if (options.values || options.flatten) fillAndFlatten(form, placed, groups, fieldFonts, options, warnings);
+  if (options.values || options.flatten) await fillAndFlatten(base, form, placed, groups, fieldFonts, options, warnings, (f) => ({ page: pageObj.get(f.pageId)!, rot: viewRot.get(f.pageId)! }));
 
   // 5) Tab order: sort widgets on each page from top left to bottom right
   pages.forEach((pr) => {
@@ -473,14 +473,23 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
  * Conditional fields whose condition is met become visible; when flattening, the others and all
  * buttons and signature fields are removed, so the result is a plain printable PDF.
  */
-function fillAndFlatten(form: ReturnType<PDFDocument['getForm']>, placed: Field[], groups: Map<string, Field[]>, fonts: Map<string, PDFFont>, options: ExportOptions, warnings: string[]) {
+async function fillAndFlatten(doc: PDFDocument, form: ReturnType<PDFDocument['getForm']>, placed: Field[], groups: Map<string, Field[]>, fonts: Map<string, PDFFont>,
+  options: ExportOptions, warnings: string[], where: (f: Field) => { page: PDFPage; rot: number }) {
   const values = options.values ?? {};
   const value = (n: string) => values[n];
   for (const [name, group] of groups) {
     const f0 = group[0];
     const v = value(f0.name);
     try {
-      if (f0.type === 'text' || f0.type === 'area') {
+      if (f0.type === 'signature' && typeof v === 'string' && v.startsWith('data:image/png')) {
+        // Signed in test mode: the signature becomes part of the page, the empty signature field goes
+        const img = await doc.embedPng(v);
+        for (const f of group) {
+          const { page, rot } = where(f);
+          drawSignature(page, img, f.rect, rot);
+        }
+        form.removeField(form.getField(name));
+      } else if (f0.type === 'text' || f0.type === 'area') {
         const tf = form.getTextField(name);
         const font = fonts.get(name);
         let text = typeof v === 'string' ? v : '';
@@ -521,6 +530,21 @@ function fillAndFlatten(form: ReturnType<PDFDocument['getForm']>, placed: Field[
   }
   form.acroForm.dict.delete(N('CO'));
   form.flatten({ updateFieldAppearances: false });
+}
+
+/** Places a signature picture in a field area, upright as the page is viewed, fitted and left-aligned on the line. */
+function drawSignature(page: PDFPage, img: Awaited<ReturnType<PDFDocument['embedPng']>>, r: Rect, rot: number) {
+  const viewW = rot % 180 ? r.h : r.w, viewH = rot % 180 ? r.w : r.h;
+  const s = Math.min((viewW * 0.96) / img.width, (viewH * 0.92) / img.height);
+  const w = img.width * s, h = img.height * s;
+  const ox = viewW * 0.02, oy = (viewH - h) * 0.3;
+  const at = {
+    0: { x: r.x + ox, y: r.y + oy },
+    90: { x: r.x + r.w - oy, y: r.y + ox },
+    180: { x: r.x + r.w - ox, y: r.y + r.h - oy },
+    270: { x: r.x + oy, y: r.y + r.h - ox },
+  }[rot as 0 | 90 | 180 | 270] ?? { x: r.x + ox, y: r.y + oy };
+  page.drawImage(img, { ...at, width: w, height: h, rotate: degrees(rot) });
 }
 
 function cleanForFont(font: PDFFont, text: string): string {

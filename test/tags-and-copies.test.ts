@@ -96,3 +96,39 @@ describe('Filled-in copies', () => {
     expect(annots).toHaveLength(0);
   });
 });
+
+describe('Default values and read-only fields', () => {
+  it('opens with default values, keeps them as reset values and locks read-only fields', async () => {
+    const { src, pages, fields } = await layout();
+    const name = fields.find((f) => f.name === 'Name')!;
+    name.defaultValue = 'Anna Berg';
+    name.readOnly = true;
+    fields.find((f) => f.name === 'Gift')!.defaultValue = 'on';
+    const res = await exportPdf({ docs: [src], pages, fields, customFonts: [], options: { hidePlaceholderLayers: false } });
+    expect(res.warnings).toEqual([]);
+    const form = (await PDFDocument.load(res.bytes)).getForm();
+    const tf = form.getTextField('Name');
+    expect(tf.getText()).toBe('Anna Berg');
+    expect(tf.isReadOnly()).toBe(true);
+    expect((tf.acroField.dict.lookup(PDFName.of('DV')) as { decodeText(): string }).decodeText()).toBe('Anna Berg');
+    expect(form.getCheckBox('Gift').isChecked()).toBe(true);
+    // Values typed in test mode win over the default
+    const filled = await exportPdf({ docs: [src], pages, fields, customFonts: [], options: { hidePlaceholderLayers: false, values: { Name: 'Ben Ott' } } });
+    expect((await PDFDocument.load(filled.bytes)).getForm().getTextField('Name').getText()).toBe('Ben Ott');
+  });
+});
+
+describe('Signing in test mode', () => {
+  it('places the signature picture on the page and removes the empty signature field', async () => {
+    const { src, pages, fields } = await layout();
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    const res = await exportPdf({ docs: [src], pages, fields, customFonts: [], options: { hidePlaceholderLayers: false, values: { Applicant: png } } });
+    expect(res.warnings).toEqual([]);
+    const form = (await PDFDocument.load(res.bytes)).getForm();
+    expect(form.getFields().map((f) => f.getName())).not.toContain('Applicant');
+    const { openPdfjs } = await import('../src/pdf/pdfjs');
+    const { OPS } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const ops = await (await (await openPdfjs(res.bytes)).getPage(1)).getOperatorList();
+    expect(ops.fnArray).toContain(OPS.paintImageXObject);
+  });
+});

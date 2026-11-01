@@ -96,11 +96,22 @@
   content: ''; position: absolute; right: 6px; top: 50%; width: 6px; height: 6px; margin-top: -5px;
   border: solid var(--c); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); pointer-events: none;
 }
-.field.comb, .test-field input.comb {
+.field.comb {
   background-image: linear-gradient(to left, color-mix(in srgb, var(--c, #0089c4) 55%, transparent) 1px, transparent 1px);
   background-size: calc(100% / var(--cells)) 100%;
 }
-.test-field input.comb { padding: 0 0 0 calc((var(--cell) - 1ch) / 2); letter-spacing: calc(var(--cell) - 1ch); }
+/* Comb fields in test mode: real cells show the characters, the input underneath only takes the typing */
+.comb-cells {
+  position: absolute; inset: 0; display: grid; grid-template-columns: repeat(var(--cells), 1fr);
+  background: rgba(0, 137, 196, 0.08); pointer-events: none;
+}
+.comb-cell { display: grid; place-items: center; overflow: hidden; border-right: 1px solid rgba(0, 137, 196, 0.35); line-height: 1; }
+.comb-cell:last-child { border-right: 0; }
+.comb-cell.cur { box-shadow: inset 0 -2px 0 var(--accent); }
+.test-field input.comb-input { position: absolute; inset: 0; color: transparent; caret-color: transparent; background: transparent; letter-spacing: 0; }
+.test-field input.comb-input:focus { background: transparent; box-shadow: none; }
+.test-field input.comb-input:focus-visible { outline: none; }
+.test-field:focus-within .comb-cells { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .test-field select {
   width: 100%; height: 100%; margin: 0; padding: 0 3px; border: 0; border-radius: 0;
   background: rgba(0, 137, 196, 0.08); outline: none;

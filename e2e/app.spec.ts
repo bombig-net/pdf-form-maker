@@ -133,3 +133,18 @@ test('applies one form font to all fields, with per-field exceptions', async ({ 
   await page.getByRole('button', { name: 'Use the form font everywhere' }).click();
   await expect(page.locator('.acc[data-sec="doc:font"] .hint').first()).toContainText('Applies to every field');
 });
+
+test('shows every character of a comb field in its own box', async ({ page }) => {
+  await openFile(page, sample('sample-tags.pdf'));
+  await page.locator('.field-row', { hasText: 'CustomerNumber' }).click();
+  await openSection(page, 'f:input');
+  await page.locator('.acc[data-sec="f:input"] .toggle-row', { hasText: 'Comb' }).locator('label').click();
+  await page.locator('input[name=maxLength]').fill('6');
+  await page.keyboard.press('Control+e');
+  await page.locator('[data-fname="CustomerNumber"]').pressSequentially('8215');
+  await expect(page.locator('.comb-cell')).toHaveText(['8', '2', '1', '5', '', '']);
+  // The input underneath must not show its own text on top of the boxes
+  await expect(page.locator('[data-fname="CustomerNumber"]')).toHaveCSS('color', 'rgba(0, 0, 0, 0)');
+  const lefts = await page.locator('.comb-cell').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
+  expect(Math.max(...lefts) - Math.min(...lefts)).toBeLessThan(1);
+});

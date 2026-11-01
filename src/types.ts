@@ -43,6 +43,14 @@ export interface Field {
   choices?: string[];
   /** Text field split into one box per character (needs a max. length). */
   comb?: boolean;
+  /** Calculated text field: sum/product/average/min/max of fields, or a formula. */
+  calc?: { op: 'sum' | 'product' | 'average' | 'min' | 'max' | 'formula'; fields?: string[]; formula?: string };
+  /** Only visible if a checkbox is checked (no value) or a radio group/dropdown has this value. */
+  showIf?: { field: string; value?: string };
+  /** Button action (type 'reset'): reset the form or send it by email. */
+  buttonAction?: 'reset' | 'email';
+  mailTo?: string;
+  mailSubject?: string;
 }
 
 export interface PageRef {

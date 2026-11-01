@@ -2,7 +2,8 @@ import type { CustomFont, Field, FieldType, FormFont, PageRef, SourceDoc } from 
 import type { PDFDocumentProxy } from './pdf/pdfjs';
 import { DEFAULT_LOCALE } from './util/locale';
 
-export type Tool = 'select' | FieldType;
+/** 'hand' pans the view; the field types draw new fields. */
+export type Tool = 'select' | 'hand' | FieldType;
 export type ChangeKind = 'doc' | 'pages' | 'fields' | 'selection' | 'tool' | 'zoom' | 'options' | 'history' | 'mode';
 
 export interface Options {

@@ -53,6 +53,9 @@ export class Viewer {
   private pinch: { startDist: number; startZoom: number; midX: number; midY: number; ratio: number } | null = null;
   private renderTimer = 0;
   private lastRadio: { name: string; pageId: string } | null = null;
+  /** Panning with the hand tool or while Space is held down */
+  private pan: { pointerId: number; x: number; y: number; left: number; top: number } | null = null;
+  private spaceDown = false;
 
   constructor(host: HTMLElement) {
     this.el = host;
@@ -70,6 +73,35 @@ export class Viewer {
 
     store.subscribe((k) => this.onChange(k));
     this.bindZoomGestures();
+    this.bindPanning();
+  }
+
+  /** Hand tool and Space + drag move the view, like in layout apps. */
+  private bindPanning() {
+    const panning = () => !store.testMode && (store.tool === 'hand' || this.spaceDown);
+    this.el.addEventListener('pointerdown', (e) => {
+      if (!panning() || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      e.preventDefault(); e.stopPropagation();
+      this.pan = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, left: this.el.scrollLeft, top: this.el.scrollTop };
+      this.el.setPointerCapture(e.pointerId);
+      this.el.classList.add('panning');
+    }, { capture: true });
+    this.el.addEventListener('pointermove', (e) => {
+      if (!this.pan || e.pointerId !== this.pan.pointerId) return;
+      this.el.scrollLeft = this.pan.left - (e.clientX - this.pan.x);
+      this.el.scrollTop = this.pan.top - (e.clientY - this.pan.y);
+    });
+    const end = () => { this.pan = null; this.el.classList.remove('panning'); };
+    this.el.addEventListener('pointerup', end);
+    this.el.addEventListener('pointercancel', end);
+    const typing = (e: KeyboardEvent) => { const t = e.target as HTMLElement | null; return !!t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(t.tagName)); };
+    window.addEventListener('keydown', (e) => {
+      if (e.code !== 'Space' || typing(e) || !store.hasDocument || store.testMode) return;
+      e.preventDefault();
+      if (!this.spaceDown) { this.spaceDown = true; this.el.classList.add('space-pan'); }
+    });
+    window.addEventListener('keyup', (e) => { if (e.code === 'Space') { this.spaceDown = false; this.el.classList.remove('space-pan'); } });
+    window.addEventListener('blur', () => { this.spaceDown = false; this.el.classList.remove('space-pan'); });
   }
 
   private onChange(k: Set<ChangeKind>) {
@@ -255,12 +287,12 @@ export class Viewer {
     const [x, y] = this.local(e, v);
     const snaps = this.buildSnaps(v, new Set(fieldEl?.dataset.id ? [fieldEl.dataset.id] : []));
 
-    if (store.tool !== 'select' && !target.classList.contains('handle')) {
+    if (store.tool !== 'select' && store.tool !== 'hand' && !target.classList.contains('handle')) {
       e.preventDefault();
       const el = h('div.field.drawing', { 'data-type': store.tool, style: `left:${x}px;top:${y}px;width:0;height:0` });
       v.overlay.append(el);
       const s = this.snapPoint(x, y, snaps);
-      this.drag = { kind: 'draw', pointerId: e.pointerId, pageId: v.page.id, startX: s[0], startY: s[1], orig: { left: s[0], top: s[1], width: 0, height: 0 }, cur: { left: s[0], top: s[1], width: 0, height: 0 }, el, snaps, moved: false, type: store.tool };
+      this.drag = { kind: 'draw', pointerId: e.pointerId, pageId: v.page.id, startX: s[0], startY: s[1], orig: { left: s[0], top: s[1], width: 0, height: 0 }, cur: { left: s[0], top: s[1], width: 0, height: 0 }, el, snaps, moved: false, type: store.tool as FieldType };
       v.overlay.setPointerCapture(e.pointerId);
       return;
     }

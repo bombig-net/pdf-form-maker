@@ -149,8 +149,11 @@ class Store {
   }
 }
 
+/** Extra inner padding of text fields in pt, on top of the small margin PDF readers keep anyway. */
+export const DEFAULT_PADDING = 2;
+
 export function defaultFormFont(): FormFont {
-  return { mode: 'uniform', family: 'Helvetica', size: 10, bold: false, italic: false, color: [0, 0, 0] };
+  return { mode: 'uniform', family: 'Helvetica', size: 10, bold: false, italic: false, color: [0, 0, 0], padding: DEFAULT_PADDING };
 }
 
 export const store = new Store();

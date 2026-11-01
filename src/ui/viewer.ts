@@ -4,6 +4,7 @@ import { h } from './dom';
 import { pageSize, rectToScreen, screenToRect, toScreen, type ViewGeom } from '../util/geom';
 import { newField, enrichField, buildLines } from '../pdf/detect';
 import { sortForTabOrder } from '../util/tabOrder';
+import { renderTestOverlay } from './testmode';
 
 export const BASE_SCALE = 96 / 72;
 const SNAP_PX = 6;
@@ -25,7 +26,10 @@ interface PageView {
 interface SnapSet { xs: number[]; ys: number[] }
 
 interface DragState {
-  kind: 'move' | 'resize' | 'draw';
+  kind: 'move' | 'resize' | 'draw' | 'marquee';
+  /** Weitere mitbewegte Felder bei Mehrfachauswahl */
+  group?: { id: string; el: HTMLElement; orig: { left: number; top: number; width: number; height: number } }[];
+  additive?: boolean;
   pointerId: number;
   pageId: string;
   field?: Field;
@@ -70,9 +74,8 @@ export class Viewer {
   private onChange(k: Set<ChangeKind>) {
     if (k.has('pages') || k.has('doc')) this.rebuild();
     else if (k.has('zoom')) this.layout();
-    else if (k.has('fields') || k.has('options')) this.drawAllOverlays();
-    else if (k.has('selection')) this.updateSelection();
-    if (k.has('tool')) this.el.dataset.tool = store.tool;
+    else if (k.has('fields') || k.has('options') || k.has('mode') || k.has('selection')) this.drawAllOverlays();
+    if (k.has('tool') || k.has('mode')) { this.el.dataset.tool = store.tool; this.el.classList.toggle('testing', store.testMode); }
   }
 
   geom(p: PageRef): ViewGeom {
@@ -159,6 +162,8 @@ export class Viewer {
     if (this.drag && this.drag.pageId === v.page.id) return; // während Drag nicht neu zeichnen
     const g = this.geom(v.page);
     const fields = store.fields.filter((f) => f.pageId === v.page.id);
+    if (store.testMode) { renderTestOverlay(v.overlay, fields, g); return; }
+    const single = store.selectedFields.length === 1;
     const order = store.options.showTabOrder ? sortForTabOrder(fields.filter((f) => f.type !== 'reset'), (f) => f.rect, g.rotation) : [];
     v.overlay.replaceChildren();
     for (const f of fields) {
@@ -174,27 +179,14 @@ export class Viewer {
         tabIdx >= 0 ? h('span.tab-badge', {}, String(tabIdx + 1)) : null,
       );
       if (f.required) el.classList.add('required');
-      if (f.id === store.selectedId) this.decorateSelected(el);
+      if (store.selection.has(f.id)) this.decorateSelected(el, single);
       v.overlay.append(el);
     }
   }
 
-  private decorateSelected(el: HTMLElement) {
+  private decorateSelected(el: HTMLElement, withHandles: boolean) {
     el.classList.add('selected');
-    for (const hd of HANDLES) el.append(h('span.handle', { 'data-handle': hd }));
-  }
-
-  private updateSelection() {
-    for (const v of this.views.values()) {
-      v.overlay.querySelectorAll('.field.selected').forEach((el) => {
-        el.classList.remove('selected');
-        el.querySelectorAll('.handle').forEach((x) => x.remove());
-      });
-      if (store.selectedId) {
-        const el = v.overlay.querySelector<HTMLElement>(`.field[data-id="${store.selectedId}"]`);
-        if (el) this.decorateSelected(el);
-      }
-    }
+    if (withHandles) for (const hd of HANDLES) el.append(h('span.handle', { 'data-handle': hd }));
   }
 
   scrollToField(id: string) {
@@ -241,11 +233,11 @@ export class Viewer {
   }
 
   private onPointerDown(e: PointerEvent, v: PageView) {
-    if (this.pinch || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (store.testMode || this.pinch || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const target = e.target as HTMLElement;
     const fieldEl = target.closest<HTMLElement>('.field');
     const [x, y] = this.local(e, v);
-    const snaps = this.buildSnaps(v, fieldEl?.dataset.id);
+    const snaps = this.buildSnaps(v, new Set(fieldEl?.dataset.id ? [fieldEl.dataset.id] : []));
 
     if (store.tool !== 'select' && !target.classList.contains('handle')) {
       e.preventDefault();
@@ -256,15 +248,36 @@ export class Viewer {
       v.overlay.setPointerCapture(e.pointerId);
       return;
     }
-    if (!fieldEl) { store.select(null); return; }
+    if (!fieldEl) {
+      // Auswahlrahmen (nur Maus/Stift, auf Touch bleibt das Scrollen erhalten)
+      if (e.pointerType === 'touch') { store.select(null); return; }
+      e.preventDefault();
+      const el = h('div.marquee', { style: `left:${x}px;top:${y}px;width:0;height:0` });
+      v.overlay.append(el);
+      const r0 = { left: x, top: y, width: 0, height: 0 };
+      this.drag = { kind: 'marquee', pointerId: e.pointerId, pageId: v.page.id, startX: x, startY: y, orig: r0, cur: { ...r0 }, el, snaps, moved: false, additive: e.shiftKey || e.metaKey || e.ctrlKey };
+      v.overlay.setPointerCapture(e.pointerId);
+      return;
+    }
     const f = store.fields.find((ff) => ff.id === fieldEl.dataset.id);
     if (!f) return;
     e.preventDefault();
-    store.select(f.id);
-    const el = v.overlay.querySelector<HTMLElement>(`.field[data-id="${f.id}"]`)!;
-    const orig = { left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight };
+    if (e.shiftKey || e.metaKey || e.ctrlKey) { store.toggleSelect(f.id); return; }
     const handle = target.dataset.handle as Handle | undefined;
-    this.drag = { kind: handle ? 'resize' : 'move', handle, pointerId: e.pointerId, pageId: v.page.id, field: f, startX: x, startY: y, orig, cur: { ...orig }, el, snaps, moved: false };
+    const inGroup = store.selection.has(f.id) && store.selectedFields.length > 1 && !handle;
+    if (!inGroup) store.select(f.id);
+    const el = v.overlay.querySelector<HTMLElement>(`.field[data-id="${f.id}"]`)!;
+    const box = (n: HTMLElement) => ({ left: n.offsetLeft, top: n.offsetTop, width: n.offsetWidth, height: n.offsetHeight });
+    const orig = box(el);
+    let group: DragState['group'];
+    if (inGroup) {
+      group = store.selectedFields.filter((x) => x.id !== f.id && x.pageId === v.page.id).map((x) => {
+        const n = v.overlay.querySelector<HTMLElement>(`.field[data-id="${x.id}"]`)!;
+        return { id: x.id, el: n, orig: box(n) };
+      });
+    }
+    const excl = new Set([f.id, ...(group ?? []).map((gg) => gg.id)]);
+    this.drag = { kind: handle ? 'resize' : 'move', handle, pointerId: e.pointerId, pageId: v.page.id, field: f, startX: x, startY: y, orig, cur: { ...orig }, el, snaps: inGroup ? this.buildSnaps(v, excl) : snaps, moved: false, group };
     v.overlay.setPointerCapture(e.pointerId);
   }
 
@@ -280,6 +293,12 @@ export class Viewer {
     const guides: { x?: number; y?: number }[] = [];
     let { left, top, width, height } = d.orig;
 
+    if (d.kind === 'marquee') {
+      left = Math.min(d.startX, x); top = Math.min(d.startY, y); width = Math.abs(x - d.startX); height = Math.abs(y - d.startY);
+      d.cur = { left, top, width, height };
+      Object.assign(d.el.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
+      return;
+    }
     if (d.kind === 'move') {
       left += dx; top += dy;
       if (useSnap) {
@@ -317,6 +336,10 @@ export class Viewer {
     }
     d.cur = { left, top, width, height };
     Object.assign(d.el.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
+    if (d.group) {
+      const ddx = left - d.orig.left, ddy = top - d.orig.top;
+      for (const gm of d.group) Object.assign(gm.el.style, { left: `${gm.orig.left + ddx}px`, top: `${gm.orig.top + ddy}px` });
+    }
     this.showGuides(v, guides);
   }
 
@@ -341,12 +364,27 @@ export class Viewer {
       this.createField(type, v.page, rect);
       return;
     }
+    if (d.kind === 'marquee') {
+      d.el.remove();
+      const m = d.cur;
+      const hit = store.fields.filter((f) => {
+        if (f.pageId !== v.page.id) return false;
+        const r = rectToScreen(g, f.rect);
+        return r.left < m.left + m.width && r.left + r.width > m.left && r.top < m.top + m.height && r.top + r.height > m.top;
+      }).map((f) => f.id);
+      if (!d.moved) { if (!d.additive) store.select(null); return; }
+      store.setSelection(d.additive ? [...new Set([...store.selectedFields.map((f) => f.id), ...hit])] : hit);
+      return;
+    }
     if (!d.moved || !d.field) { this.drawOverlay(v); return; }
     const rect = screenToRect(g, d.cur.left, d.cur.top, d.cur.width, d.cur.height);
     const id = d.field.id;
+    const ddx = d.cur.left - d.orig.left, ddy = d.cur.top - d.orig.top;
+    const moves = (d.group ?? []).map((gm) => ({ id: gm.id, rect: screenToRect(g, gm.orig.left + ddx, gm.orig.top + ddy, gm.orig.width, gm.orig.height) }));
     store.commit(() => {
       const f = store.fields.find((x) => x.id === id);
       if (f) f.rect = roundRect(rect);
+      for (const mv of moves) { const ff = store.fields.find((x) => x.id === mv.id); if (ff) ff.rect = roundRect(mv.rect); }
     });
   }
 
@@ -354,7 +392,7 @@ export class Viewer {
     const d = this.drag;
     if (!d) return;
     this.drag = null;
-    if (d.kind === 'draw') d.el.remove();
+    if (d.kind === 'draw' || d.kind === 'marquee') d.el.remove();
     const v = this.views.get(d.pageId);
     if (v) { this.showGuides(v, []); this.drawOverlay(v); }
   }
@@ -369,8 +407,17 @@ export class Viewer {
     }
     if (type !== 'reset') {
       const a = store.analysis(page);
+      const auto = f.name;
       enrichField(f, a, buildLines(a.texts), []);
-      if (f.tooltip === f.name.replace(/_/g, ' ')) f.tooltip = '';
+      const label = f.tooltip !== auto.replace(/_/g, ' ') ? f.tooltip : '';
+      if (!label) f.tooltip = '';
+      const slug = slugify(label);
+      // Name aus der Beschriftung neben/über dem Feld ableiten
+      if (slug && type === 'radio') {
+        let v = slug, k = 2;
+        while (store.fields.some((x) => x.type === 'radio' && x.name === f.name && x.radioValue === v)) v = `${slug}_${k++}`;
+        f.radioValue = v;
+      } else if (slug) f.name = uniqueName(slug);
     }
     store.commit(() => { store.fields.push(f); });
     store.select(f.id);
@@ -385,7 +432,7 @@ export class Viewer {
     return `${base}_${n}`;
   }
 
-  private buildSnaps(v: PageView, excludeId?: string): SnapSet {
+  private buildSnaps(v: PageView, exclude: Set<string> = new Set()): SnapSet {
     const g = this.geom(v.page);
     const xs: number[] = [], ys: number[] = [];
     const size = pageSize(g);
@@ -397,7 +444,7 @@ export class Viewer {
     for (const l of a.snap.xs) addLine(toScreen(g, l.v, l.a), toScreen(g, l.v, l.b));
     for (const l of a.snap.ys) addLine(toScreen(g, l.a, l.v), toScreen(g, l.b, l.v));
     for (const f of store.fields) {
-      if (f.pageId !== v.page.id || f.id === excludeId) continue;
+      if (f.pageId !== v.page.id || exclude.has(f.id)) continue;
       const r = rectToScreen(g, f.rect);
       xs.push(r.left, r.left + r.width / 2, r.left + r.width);
       ys.push(r.top, r.top + r.height / 2, r.top + r.height);
@@ -419,15 +466,18 @@ export class Viewer {
     }
   }
 
-  /** Feld per Tastatur verschieben (Pfeiltasten), dx/dy in Bildschirm-Richtung, Einheit pt. */
-  nudge(id: string, dx: number, dy: number) {
-    const f = store.fields.find((x) => x.id === id);
-    const p = f && store.page(f.pageId);
-    if (!f || !p) return;
-    const g = this.geom(p);
-    const r = rectToScreen(g, f.rect);
-    const nr = screenToRect(g, r.left + dx * g.scale, r.top + dy * g.scale, r.width, r.height);
-    store.commit(() => { f.rect = roundRect(nr); }, ['fields'], 'nudge:' + id);
+  /** Felder per Tastatur verschieben (Pfeiltasten), dx/dy in Bildschirm-Richtung, Einheit pt. */
+  nudge(ids: string[], dx: number, dy: number) {
+    store.commit(() => {
+      for (const id of ids) {
+        const f = store.fields.find((x) => x.id === id);
+        const p = f && store.page(f.pageId);
+        if (!f || !p) continue;
+        const g = this.geom(p);
+        const r = rectToScreen(g, f.rect);
+        f.rect = roundRect(screenToRect(g, r.left + dx * g.scale, r.top + dy * g.scale, r.width, r.height));
+      }
+    }, ['fields'], 'nudge:' + ids.join(','));
   }
 
   /* ---------------------------------------------------------------- */
@@ -529,4 +579,15 @@ function defaultSize(type: FieldType): { w: number; h: number } {
 function roundRect(r: Rect): Rect {
   const q = (n: number) => Math.round(n * 100) / 100;
   return { x: q(r.x), y: q(r.y), w: q(r.w), h: q(r.h) };
+}
+
+/** Beschriftung in einen gültigen Feldnamen umwandeln. */
+export function slugify(label: string): string {
+  return label.trim().replace(/[:*]+$/, '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+}
+export function uniqueName(base: string): string {
+  if (!store.fields.some((f) => f.name === base)) return base;
+  let n = 2;
+  while (store.fields.some((f) => f.name === `${base}_${n}`)) n++;
+  return `${base}_${n}`;
 }

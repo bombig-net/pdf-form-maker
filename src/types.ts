@@ -51,6 +51,19 @@ export interface Field {
   buttonAction?: 'reset' | 'email';
   mailTo?: string;
   mailSubject?: string;
+  /** Field keeps its own font settings instead of the form font. */
+  fontLocked?: boolean;
+}
+
+/** Form-wide font: 'uniform' applies it to every field without own settings, 'layout' keeps the detected fonts. */
+export interface FormFont {
+  mode: 'uniform' | 'layout';
+  family: FontFamily;
+  /** 0 = auto */
+  size: number;
+  bold: boolean;
+  italic: boolean;
+  color: RGB;
 }
 
 export interface PageRef {

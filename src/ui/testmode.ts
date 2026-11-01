@@ -105,6 +105,13 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       box.append(btn);
     }
     overlay.append(box);
+    // Tag text outside the field (e.g. next to a checkbox) is hidden on export, so cover it here too
+    if (f.bgColor) for (const x of f.extraHide) {
+      const inside = x.x >= f.rect.x && x.y >= f.rect.y && x.x + x.w <= f.rect.x + f.rect.w && x.y + x.h <= f.rect.y + f.rect.h;
+      if (inside) continue;
+      const c = rectToScreen(g, x);
+      overlay.prepend(h('div.test-cover', { 'aria-hidden': 'true', style: `left:${c.left}px;top:${c.top}px;width:${c.width}px;height:${c.height}px;background:${toHex(f.bgColor)}` }));
+    }
   }
   queueMicrotask(refreshLogic);
 }

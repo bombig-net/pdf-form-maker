@@ -1,17 +1,17 @@
 import type { Rect } from '../types';
 
 /**
- * Sortiert Elemente für die Tab-Reihenfolge: zeilenweise von oben nach unten, innerhalb einer Zeile von links nach rechts.
- * Berücksichtigt die Seitendrehung (Leserichtung wie am Bildschirm).
+ * Sorts items for tab order: row by row from top to bottom, left to right within a row.
+ * Takes page rotation into account (reading order as shown on screen).
  */
 export function sortForTabOrder<T>(items: T[], rectOf: (t: T) => Rect, rotation = 0): T[] {
   const rot = ((rotation % 360) + 360) % 360;
-  // In "Bildschirm-Koordinaten" umrechnen: top (kleiner = weiter oben), left
+  // Convert to "screen coordinates": top (smaller = higher up), left
   const view = items.map((it) => {
     const r = rectOf(it);
     let top: number, left: number, h: number;
     switch (rot) {
-      case 90: top = r.x; left = r.y; h = r.w; break;           // Seite im Uhrzeigersinn gedreht
+      case 90: top = r.x; left = r.y; h = r.w; break;           // page rotated clockwise
       case 180: top = r.y; left = -(r.x + r.w); h = r.h; break;
       case 270: top = -(r.x + r.w); left = -(r.y + r.h); h = r.w; break;
       default: top = -(r.y + r.h); left = r.x; h = r.h;

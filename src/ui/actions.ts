@@ -12,7 +12,7 @@ export async function filesFromList(list: FileList | File[]): Promise<InputFile[
   const out: InputFile[] = [];
   for (const f of Array.from(list)) {
     if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') {
-      toast(`„${f.name}“ ist keine PDF-Datei. Exportiere dein Dokument zuerst als PDF.`, 'error', 6000);
+      toast(`“${f.name}” is not a PDF file. Export your document as a PDF first.`, 'error', 6000);
       continue;
     }
     out.push({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) });
@@ -20,10 +20,10 @@ export async function filesFromList(list: FileList | File[]): Promise<InputFile[
   return out;
 }
 
-/** Öffnet PDFs. mode 'replace' startet neu, 'append' hängt Seiten an (Merge). */
+/** Opens PDFs. Mode 'replace' starts over, 'append' adds pages (merge). */
 export async function openPdfs(files: InputFile[], mode: 'replace' | 'append'): Promise<boolean> {
   if (!files.length) return false;
-  const busy = showBusy(mode === 'replace' ? 'PDF wird analysiert …' : 'PDF wird angehängt …');
+  const busy = showBusy(mode === 'replace' ? 'Analyzing PDF …' : 'Appending PDF …');
   const newFields: Field[] = [];
   const newPages: PageRef[] = [];
   const loaded: { doc: Awaited<ReturnType<typeof analyzeDocument>> }[] = [];
@@ -31,7 +31,7 @@ export async function openPdfs(files: InputFile[], mode: 'replace' | 'append'): 
     for (const f of files) loaded.push({ doc: await analyzeDocument(f.bytes, f.name) });
   } catch (e) {
     busy();
-    toast(e instanceof PdfLoadError ? e.message : `Die PDF konnte nicht geöffnet werden: ${(e as Error).message}`, 'error', 7000);
+    toast(e instanceof PdfLoadError ? e.message : `The PDF could not be opened: ${(e as Error).message}`, 'error', 7000);
     return false;
   }
   busy();
@@ -58,8 +58,8 @@ export async function openPdfs(files: InputFile[], mode: 'replace' | 'append'): 
   }
 
   const n = newFields.length;
-  if (n) toast(`${n} ${n === 1 ? 'Feld' : 'Felder'} erkannt auf ${newPages.length} ${newPages.length === 1 ? 'Seite' : 'Seiten'}.`);
-  else if (mode === 'replace') toast('Keine Platzhalter gefunden. Zieh Felder mit den Werkzeugen oben auf.', 'info', 6000);
+  if (n) toast(`${n} ${n === 1 ? 'field' : 'fields'} found on ${newPages.length} ${newPages.length === 1 ? 'page' : 'pages'}.`);
+  else if (mode === 'replace') toast('No placeholders found. Draw fields with the tools above.', 'info', 6000);
 
   const newIds = new Set(newFields.map((f) => f.id));
   const dupes = crossPageDuplicates(store.fields).filter((name) => store.fields.some((f) => f.name === name && newIds.has(f.id)));
@@ -67,7 +67,7 @@ export async function openPdfs(files: InputFile[], mode: 'replace' | 'append'): 
   return true;
 }
 
-/** Dialog: gleichnamige Felder auf mehreren Seiten synchronisieren oder trennen. */
+/** Dialog: keep fields with the same name on several pages in sync, or separate them. */
 export function askDuplicates(names: string[]): Promise<void> {
   return new Promise((resolve) => {
     const choice = new Map(names.map((n) => [n, 'sync' as 'sync' | 'split']));
@@ -75,17 +75,17 @@ export function askDuplicates(names: string[]): Promise<void> {
       const pages = [...new Set(store.fields.filter((f) => f.name === n).map((f) => store.pageNumber(f.pageId)))].sort((a, b) => a - b);
       const group = `dup_${uid('g')}`;
       return h('fieldset.dup-row', {},
-        h('legend', {}, h('code', {}, n), h('span.dup-pages', {}, ` auf Seite ${pages.join(', ')}`)),
+        h('legend', {}, h('code', {}, n), h('span.dup-pages', {}, ` on page ${pages.join(', ')}`)),
         h('label.dup-opt', {}, h('input', { type: 'radio', name: group, checked: true, onchange: () => choice.set(n, 'sync') }),
-          h('span', {}, h('strong', {}, 'Synchronisieren'), h('small', {}, 'Ein Eintrag erscheint auf allen Seiten.'))),
+          h('span', {}, h('strong', {}, 'Keep in sync'), h('small', {}, 'One entry appears on every page.'))),
         h('label.dup-opt', {}, h('input', { type: 'radio', name: group, onchange: () => choice.set(n, 'split') }),
-          h('span', {}, h('strong', {}, 'Trennen'), h('small', {}, `Eigene Felder, z. B. ${n}_S${pages[0]}.`))));
+          h('span', {}, h('strong', {}, 'Separate'), h('small', {}, `Independent fields, e.g. ${n}_S${pages[0]}.`))));
     });
     const dlg = h<HTMLDialogElement>('dialog.modal', { 'aria-labelledby': 'dup-title' },
-      h('h2', { id: 'dup-title' }, 'Gleiche Feldnamen auf mehreren Seiten'),
-      h('p', {}, 'Sollen diese Felder dieselben Daten zeigen oder getrennt ausgefüllt werden?'),
+      h('h2', { id: 'dup-title' }, 'Same field names on several pages'),
+      h('p', {}, 'Should these fields show the same data or be filled in separately?'),
       h('div.dup-list', {}, ...rows),
-      h('div.modal-actions', {}, h('button.btn.primary', { type: 'button', onclick: () => dlg.close() }, 'Übernehmen')));
+      h('div.modal-actions', {}, h('button.btn.primary', { type: 'button', onclick: () => dlg.close() }, 'Apply')));
     dlg.addEventListener('close', () => {
       const split = names.filter((n) => choice.get(n) === 'split');
       if (split.length) {
@@ -118,21 +118,21 @@ export async function runExport(btn?: HTMLButtonElement) {
       options: { hidePlaceholderLayers: store.options.hidePlaceholderLayers },
     });
     const ms = Math.round(performance.now() - t0);
-    const name = `${store.fileName || 'formular'}-formular.pdf`;
+    const name = `${store.fileName || 'form'}-fillable.pdf`;
     const saved = await saveFile(name, res.bytes);
     if (saved === 'declined') return;
-    toast(`${res.fieldCount} ${res.fieldCount === 1 ? 'Feld' : 'Felder'} exportiert (${ms} ms).`);
+    toast(`${res.fieldCount} ${res.fieldCount === 1 ? 'field' : 'fields'} exported (${ms} ms).`);
     for (const w of res.warnings) toast(w, 'warn', 8000);
   } catch (e) {
     console.error(e);
-    toast(`Export fehlgeschlagen: ${(e as Error).message}`, 'error', 8000);
+    toast(`Export failed: ${(e as Error).message}`, 'error', 8000);
   } finally {
     btn?.removeAttribute('aria-busy');
     if (btn) btn.disabled = false;
   }
 }
 
-/** Speichert über die Download-Funktion der Claude-Vorschau, sonst klassisch per Link. */
+/** Saves via the Claude preview's download capability, otherwise via a classic link. */
 async function saveFile(name: string, bytes: Uint8Array): Promise<'saved' | 'declined'> {
   const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
   const c = (window as unknown as { claude?: { use?: (n: string) => Promise<{ save(r: { filename: string; data: Blob }): Promise<unknown> } | null> } }).claude;
@@ -143,7 +143,7 @@ async function saveFile(name: string, bytes: Uint8Array): Promise<'saved' | 'dec
     } catch (e) {
       const code = (e as { code?: string }).code;
       if (code === 'declined') return 'declined';
-      if (code === 'rate_limited') { toast('Bitte kurz warten und erneut exportieren.', 'warn'); return 'declined'; }
+      if (code === 'rate_limited') { toast('Please wait a moment and export again.', 'warn'); return 'declined'; }
     }
   }
   const url = URL.createObjectURL(blob);

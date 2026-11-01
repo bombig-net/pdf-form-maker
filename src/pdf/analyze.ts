@@ -7,17 +7,17 @@ import { uid } from '../util/geom';
 export class PdfLoadError extends Error {}
 
 export async function analyzeDocument(bytes: Uint8Array, name: string): Promise<{ doc: SourceDoc; proxy: PDFDocumentProxy }> {
-  if (!isPdf(bytes)) throw new PdfLoadError(`„${name}“ ist keine PDF-Datei.`);
+  if (!isPdf(bytes)) throw new PdfLoadError(`“${name}” is not a PDF file.`);
   let lib: PDFDocument;
   try {
     lib = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false, throwOnInvalidObject: false });
   } catch {
-    throw new PdfLoadError(`„${name}“ konnte nicht gelesen werden. Ist die Datei beschädigt?`);
+    throw new PdfLoadError(`“${name}” could not be read. Is the file damaged?`);
   }
-  if (lib.isEncrypted) throw new PdfLoadError(`„${name}“ ist verschlüsselt. Exportiere die PDF ohne Passwortschutz.`);
+  if (lib.isEncrypted) throw new PdfLoadError(`“${name}” is encrypted. Export the PDF without password protection.`);
   let proxy: PDFDocumentProxy;
   try { proxy = await openPdfjs(bytes); } catch {
-    throw new PdfLoadError(`„${name}“ konnte nicht dargestellt werden.`);
+    throw new PdfLoadError(`“${name}” could not be displayed.`);
   }
 
   const pages: PageAnalysis[] = [];
@@ -26,7 +26,7 @@ export async function analyzeDocument(bytes: Uint8Array, name: string): Promise<
     const pp = await proxy.getPage(i + 1);
     let interp;
     try { interp = interpretPage(lib.getPage(i)); } catch (e) {
-      console.warn('Seite', i + 1, 'konnte nicht analysiert werden', e);
+      console.warn('Page', i + 1, 'could not be analyzed', e);
       interp = { textOps: [], paths: [], ocBoxes: {}, snap: { xs: [], ys: [] } };
     }
     const tc = await pp.getTextContent();
@@ -34,7 +34,7 @@ export async function analyzeDocument(bytes: Uint8Array, name: string): Promise<
     for (const it of tc.items as { str?: string; transform?: number[]; width?: number; height?: number }[]) {
       if (!it.str || !it.transform) continue;
       const t = it.transform;
-      if (Math.abs(t[1]) > 0.01 || Math.abs(t[2]) > 0.01 || t[0] <= 0) continue; // nur waagerechter Text
+      if (Math.abs(t[1]) > 0.01 || Math.abs(t[2]) > 0.01 || t[0] <= 0) continue; // horizontal text only
       texts.push({ str: it.str, x: t[4], y: t[5], w: it.width ?? 0, h: it.height || Math.hypot(t[2], t[3]) });
     }
     const widgets: ExistingWidget[] = [];
@@ -54,7 +54,7 @@ export async function analyzeDocument(bytes: Uint8Array, name: string): Promise<
           required: !!((an.fieldFlags as number) & 2),
         });
       }
-    } catch { /* ignorieren */ }
+    } catch { /* ignore */ }
     pages.push({
       view: pp.view as [number, number, number, number],
       baseRotate: pp.rotate || 0,

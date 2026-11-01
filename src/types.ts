@@ -2,10 +2,10 @@ export type FieldType = 'text' | 'area' | 'check' | 'radio' | 'reset';
 export type FormatKind = 'none' | 'email' | 'date' | 'phone' | 'number' | 'zip';
 export type Align = 'left' | 'center' | 'right';
 export type RGB = [number, number, number];
-/** 'Helvetica' | 'Times' | 'Courier' oder 'custom:<id>' */
+/** 'Helvetica' | 'Times' | 'Courier' or 'custom:<id>' */
 export type FontFamily = string;
 
-/** Rechteck im PDF-Koordinatensystem der Quellseite (Ursprung unten links, Einheit pt). */
+/** Rectangle in the source page's PDF coordinate system (origin bottom left, unit pt). */
 export interface Rect { x: number; y: number; w: number; h: number }
 
 export interface Field {
@@ -13,31 +13,31 @@ export interface Field {
   pageId: string;
   type: FieldType;
   name: string;
-  /** Exportwert eines Radio-Buttons (name = Gruppenname). */
+  /** Export value of a radio button (name = group name). */
   radioValue: string;
   rect: Rect;
   fontFamily: FontFamily;
   bold: boolean;
   italic: boolean;
-  /** 0 = automatisch */
+  /** 0 = auto */
   fontSize: number;
   color: RGB;
   autoContrast: boolean;
-  /** Erkannte Hintergrundfarbe unter dem Feld (für Smart Contrast). */
+  /** Detected background color under the field (for Smart Contrast). */
   bgColor: RGB | null;
   align: Align;
   required: boolean;
   maxLength: number;
   format: FormatKind;
   placeholder: string;
-  /** Statischen Text innerhalb des Feldes beim Export unsichtbar machen. */
+  /** Make static text inside the field invisible on export. */
   hideText: boolean;
   tooltip: string;
-  /** Beschriftung (nur Reset-Button). */
+  /** Caption (reset button only). */
   label: string;
   buttonBg: RGB;
   source: 'layer' | 'tag' | 'manual' | 'import';
-  /** Zusätzliche Bereiche, deren Text beim Export ausgeblendet wird (z. B. der Tag-Text selbst). */
+  /** Additional areas whose text is hidden on export (e.g. the tag text itself). */
   extraHide: Rect[];
 }
 
@@ -45,7 +45,7 @@ export interface PageRef {
   id: string;
   docId: string;
   srcIndex: number;
-  /** Zusätzliche Drehung durch den Nutzer (0/90/180/270). */
+  /** Additional rotation applied by the user (0/90/180/270). */
   rotation: number;
 }
 
@@ -56,7 +56,7 @@ export interface TextOpRecord {
   streamKey: string;
   start: number;
   end: number;
-  /** Ursprung und geschätztes Ende im User Space */
+  /** Origin and estimated end in user space */
   x: number; y: number;
   x2: number; y2: number;
   size: number;
@@ -89,7 +89,7 @@ export interface PageAnalysis {
   baseRotate: number;
   textOps: TextOpRecord[];
   paths: PathRecord[];
-  /** Ebenenname -> Bounding Boxes (je markierter Abschnitt) */
+  /** Layer name -> bounding boxes (one per marked section) */
   ocBoxes: Record<string, [number, number, number, number][]>;
   snap: SnapLines;
   texts: TextItemLite[];

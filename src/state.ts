@@ -18,11 +18,11 @@ class Store {
   pages: PageRef[] = [];
   fields: Field[] = [];
   customFonts: CustomFont[] = [];
-  /** Primär ausgewähltes Feld (zeigt das Eigenschaften-Panel). */
+  /** Primary selected field (shown in the properties panel). */
   selectedId: string | null = null;
-  /** Alle ausgewählten Felder (Mehrfachauswahl), enthält selectedId. */
+  /** All selected fields (multi-selection), includes selectedId. */
   selection = new Set<string>();
-  /** Testmodus: Formular in der App ausfüllen. */
+  /** Test mode: fill in the form inside the app. */
   testMode = false;
   tool: Tool = 'select';
   zoom = 1;
@@ -53,7 +53,7 @@ class Store {
 
   get hasDocument() { return this.docs.length > 0; }
   get selected(): Field | undefined { return this.fields.find((f) => f.id === this.selectedId); }
-  /** Ausgewählte Felder, die noch existieren. */
+  /** Selected fields that still exist. */
   get selectedFields(): Field[] {
     if (this.selectedId && !this.selection.has(this.selectedId)) this.selection.add(this.selectedId);
     return this.fields.filter((f) => this.selection.has(f.id));
@@ -67,7 +67,7 @@ class Store {
   }
 
   /**
-   * Änderung mit Verlauf. `coalesce` fasst schnelle Folgeänderungen (z. B. Tippen) zu einem Schritt zusammen.
+   * Change with history. `coalesce` merges rapid follow-up changes (e.g. typing) into one step.
    */
   commit(mutate: () => void, kinds: ChangeKind[] = ['fields'], coalesce?: string) {
     const now = Date.now();
@@ -113,7 +113,7 @@ class Store {
     this.coalesceKey = '';
     this.emit('selection');
   }
-  /** Mehrere Felder auswählen; das letzte wird primär. */
+  /** Select several fields; the last one becomes primary. */
   setSelection(ids: string[]) {
     this.selection = new Set(ids);
     this.selectedId = ids.length ? ids[ids.length - 1] : null;

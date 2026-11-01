@@ -7,19 +7,19 @@ import { apply, mul, IDENT, type M6 } from '../util/geom';
 import type { PathRecord, RGB, SnapLines, TextOpRecord } from '../types';
 
 /* ------------------------------------------------------------------ */
-/* Stream-Zugriff                                                      */
+/* Stream access                                                       */
 /* ------------------------------------------------------------------ */
 
 export function decodeStream(s: PDFStream): Uint8Array {
   if (s instanceof PDFRawStream) {
     try { return decodePDFRawStream(s).decode(); } catch { return new Uint8Array(0); }
   }
-  // PDFContentStream / PDFFlateStream o. ä.
+  // PDFContentStream / PDFFlateStream etc.
   const anyS = s as unknown as { getUnencodedContents?: () => Uint8Array; getContents: () => Uint8Array };
   return anyS.getUnencodedContents ? anyS.getUnencodedContents() : anyS.getContents();
 }
 
-/** Alle Content-Streams einer Seite dekodiert und mit Zeilenumbruch verbunden (deterministisch). */
+/** All content streams of a page, decoded and joined with a newline (deterministic). */
 export function pageContentBytes(page: PDFPage): Uint8Array {
   const ctx = page.doc.context;
   const contents = page.node.get(PDFName.of('Contents'));
@@ -59,7 +59,7 @@ export function pdfString(o: unknown): string {
 const num = (o: CSObj | undefined, d = 0) => (typeof o === 'number' ? o : d);
 
 /* ------------------------------------------------------------------ */
-/* Schrift-Metriken                                                    */
+/* Font metrics                                                        */
 /* ------------------------------------------------------------------ */
 
 interface FontMetrics { baseFont: string; twoByte: boolean; width: (code: number) => number }
@@ -99,7 +99,7 @@ function buildFontMetrics(ctx: PDFContext, fd: PDFDict | undefined): FontMetrics
         }
       }
     }
-    // Hinweis: Wir nehmen Identity-H (CID = Code) an – bei Affinity-Exporten der Normalfall.
+    // Note: we assume Identity-H (CID = code) – the usual case for most layout programs.
     return { baseFont, twoByte: true, width: (c) => map.get(c) ?? dw };
   }
   const fc = ctx.lookup(fd.get(PDFName.of('FirstChar')));
@@ -133,7 +133,7 @@ function buildFontMetrics(ctx: PDFContext, fd: PDFDict | undefined): FontMetrics
 interface GState {
   ctm: M6;
   fill: RGB | null;
-  fillN: number; // Komponenten des Füll-Farbraums (1/3/4, 0 = Muster/unbekannt)
+  fillN: number; // components of the fill color space (1/3/4, 0 = pattern/unknown)
   font: FontMetrics | null;
   fontSize: number;
   tc: number; tw: number; th: number; tl: number; trise: number; tr: number;
@@ -196,7 +196,7 @@ export function interpretPage(page: PDFPage): InterpretResult {
     let gs: GState = { ...gsInit };
     const gstack: GState[] = [];
     let tm: M6 = IDENT, tlm: M6 = IDENT;
-    // aktueller Pfad
+    // current path
     let pathBox = emptyBox();
     let segs: { x1: number; y1: number; x2: number; y2: number }[] = [];
     let cur: [number, number] = [0, 0];
@@ -246,7 +246,7 @@ export function interpretPage(page: PDFPage): InterpretResult {
       }
       const e = apply(mul(tm, gs.ctm), 0, gs.trise);
       const size = Math.hypot(trm0[2], trm0[3]) * gs.fontSize;
-      // "Oberkante": Richtung der y-Achse des Textraums
+      // "top edge": direction of the text space y axis
       const up = apply([trm0[0], trm0[1], trm0[2], trm0[3], 0, 0], 0, gs.fontSize * 0.75);
       res.textOps.push({
         streamKey, start: op.start, end: op.end,
@@ -262,7 +262,7 @@ export function interpretPage(page: PDFPage): InterpretResult {
         case 'q': gstack.push({ ...gs }); break;
         case 'Q': if (gstack.length) gs = gstack.pop()!; break;
         case 'cm': if (a.length >= 6) gs.ctm = mul(a.slice(0, 6).map((v) => num(v)) as M6, gs.ctm); break;
-        // Farben
+        // Colors
         case 'g': gs.fill = colorFromArgs(a, 1); gs.fillN = 1; break;
         case 'rg': gs.fill = colorFromArgs(a, 3); gs.fillN = 3; break;
         case 'k': gs.fill = colorFromArgs(a, 4); gs.fillN = 4; break;
@@ -289,7 +289,7 @@ export function interpretPage(page: PDFPage): InterpretResult {
           break;
         }
         case 'sc': case 'scn': gs.fill = gs.fillN ? colorFromArgs(a, gs.fillN) : gs.fill; break;
-        // Pfade
+        // Paths
         case 'm': cur = [num(a[0]), num(a[1])]; subStart = cur; addPt(cur[0], cur[1]); break;
         case 'l': lineTo(num(a[0]), num(a[1])); break;
         case 'c': addPt(num(a[0]), num(a[1])); addPt(num(a[2]), num(a[3])); addPt(num(a[4]), num(a[5])); cur = [num(a[4]), num(a[5])]; break;
@@ -351,7 +351,7 @@ export function interpretPage(page: PDFPage): InterpretResult {
           showText(op, parts);
           break;
         }
-        // Marked Content / Ebenen
+        // Marked content / layers
         case 'BMC': ocStack.push({ name: null, box: emptyBox() }); break;
         case 'BDC': {
           let name: string | null = null;

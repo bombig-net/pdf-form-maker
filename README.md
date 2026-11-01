@@ -1,93 +1,94 @@
 # PDF Form Maker
 
-Web-App, die aus einer normalen PDF ein **ausfüllbares PDF-Formular (AcroForm)** macht. Platzhalter im Layout werden über eine Namenskonvention automatisch zu Formularfeldern. Im visuellen Editor lassen sich die Felder danach prüfen, anpassen und ergänzen.
+A web app that turns an ordinary PDF into a **fillable PDF form (AcroForm)**. Placeholders in your layout automatically become form fields based on a naming convention. A visual editor then lets you review, adjust and add fields.
 
-Die App funktioniert mit PDFs aus jedem Programm, z. B. Affinity, InDesign, Illustrator, Canva, Word oder LibreOffice. Die gesamte Verarbeitung läuft **im Browser**: Es werden keine Dateien hochgeladen, und es gibt keine Server-Infrastruktur.
+The app works with PDFs from any program, e.g. Affinity, InDesign, Illustrator, Canva, Word or LibreOffice. All processing happens **in the browser**: no files are uploaded and there is no server infrastructure.
 
-## So kommen die Felder ins Dokument
+## How fields get into the document
 
-Es gibt drei Wege, die sich beliebig kombinieren lassen.
+There are three ways, and you can combine them freely.
 
-**1. Text-Tag im Layout (funktioniert mit jeder PDF).** Zeichne ein Rechteck dort, wo das Feld hin soll, und schreib einen Tag als Text hinein:
+**1. Text tag in the layout (works with any PDF).** Draw a rectangle where the field should go and type a tag inside it as text:
 
-| Tag | Ergebnis |
+| Tag | Result |
 | --- | --- |
-| `[Form_Text_Feldname]` | Einzeiliges Textfeld |
-| `[Form_Area_Feldname]` | Mehrzeiliges Textfeld |
-| `[Form_Check_Feldname]` | Checkbox |
-| `[Form_Radio_Gruppe_Wert]` | Radio-Button; gleiche Gruppe = eine Auswahl |
+| `[Form_Text_FieldName]` | Single-line text field |
+| `[Form_Area_FieldName]` | Multi-line text field |
+| `[Form_Check_FieldName]` | Checkbox |
+| `[Form_Radio_Group_Value]` | Radio button; same group = one choice |
 
-Das kleinste Rechteck um den Tag wird zum Feld, der Tag selbst wird beim Export ausgeblendet. Bei Checkboxen und Radio-Buttons darf der Tag auch direkt rechts neben dem Kästchen stehen.
+The smallest rectangle around the tag becomes the field, and the tag itself is hidden on export. For checkboxes and radio buttons the tag may also sit right next to the box.
 
-**2. Ebenenname.** Wenn dein Programm Ebenen als PDF-Ebenen (Optional Content Groups) exportiert, kannst du das Rechteck stattdessen auf eine Ebene mit dem Tag als Namen legen. Ob und wie Ebenen mitexportiert werden, hängt vom Programm und den Exporteinstellungen ab. Im Zweifel ist der Text-Tag der sichere Weg.
+**2. Layer name.** If your app exports layers as PDF layers (optional content groups), you can instead put the rectangle on a layer named after the tag. Whether and how layers are exported depends on the app and its export settings. When in doubt, the text tag is the safe choice.
 
-**3. Manuell im Editor.** Felder lassen sich auch ohne Vorbereitung direkt auf der Seite aufziehen, z. B. bei gescannten Dokumenten oder PDFs von Dritten.
+**3. Manually in the editor.** You can also draw fields directly on the page without any preparation, e.g. for scanned documents or third-party PDFs.
 
-Text, der schon im Platzhalter steht, etwa „Hier Name eintragen“, bleibt nicht statisch unter dem Feld stehen. Er wird ausgeblendet und als grauer **Ghost-Text** ins Formularfeld übernommen.
+Text that already sits inside a placeholder, such as “Enter your name”, does not stay as static text under the field. It is hidden and carried over into the form field as gray **ghost text**.
 
-Bereits vorhandene Formularfelder werden übernommen. Ein exportiertes Formular lässt sich also erneut öffnen und weiterbearbeiten.
+Existing form fields are kept, so an exported form can be opened again and edited further.
 
-## Funktionen
+## Features
 
-- **Automatische Erkennung** über Text-Tags und Ebenennamen, inklusive Inhalten in Form-XObjects.
-- **Visueller Editor:** Felder aufziehen, verschieben, skalieren, löschen, duplizieren; Rückgängig/Wiederholen.
-- **Schrift-Matching:** Schriftfamilie (Sans/Serif/Mono), Größe und Farbe werden aus dem Text im Feld bzw. der Beschriftung daneben oder darüber übernommen. Eigene TTF/OTF-Schriften lassen sich einbetten.
-- **Smart Align:** Einrasten an Kanten anderer Felder und an Linien der Vorlage (Alt hält das Einrasten kurz an).
-- **Automatische Tab-Reihenfolge** von links oben nach rechts unten, auch auf gedrehten Seiten.
-- **Smart Fields:** E-Mail, Datum (TT.MM.JJJJ, Kalender in Acrobat mobil), Telefon, Zahl, PLZ.
-- **Smart Contrast:** Die Eingabefarbe wird auf dunklem Hintergrund automatisch hell.
-- **Zurücksetzen-Button** als eigener Feldtyp.
-- **Seitenverwaltung:** drehen, umsortieren (ziehen), löschen, weitere PDFs anhängen.
-- **Gleichnamige Felder auf mehreren Seiten:** Abfrage, ob sie synchronisiert (ein Feld mit mehreren Widgets) oder getrennt (Suffix `_S1`, `_S2` …) werden sollen.
-- **Mehrfachauswahl:** Shift-Klick oder Auswahlrahmen; gemeinsam verschieben, ausrichten, gleichmäßig verteilen, Breite/Höhe angleichen und Eigenschaften setzen.
-- **Kopieren und Einfügen** von Feldern (⌘/Strg C/V), auch auf andere Seiten.
-- **Feldnamen aus Beschriftungen:** Ein gezeichnetes Feld neben „Vorname“ heißt automatisch `Vorname`.
-- **Testmodus** (⌘/Strg E): Formular direkt in der App ausfüllen, inklusive Tab-Reihenfolge, Ghost-Text, Formatprüfung und synchronisierter Felder.
-- **Preflight vor dem Export:** Hinweise auf überlappende Felder, Felder am Seitenrand, sehr kleine Schrift, Namenskonflikte und Radio-Gruppen mit nur einer Option.
-- **Hilfe ohne Treffer:** Werden keine Platzhalter gefunden, erklärt die App die wahrscheinliche Ursache.
-- **Touch:** Pinch-to-Zoom und große Griffe auf dem iPad, Eigenschaften als Bottom Sheet auf dem Telefon; Strg/⌘ + Mausrad oder Trackpad am Desktop.
+- **Automatic detection** via text tags and layer names, including content inside form XObjects.
+- **Visual editor:** draw, move, resize, delete and duplicate fields; undo/redo.
+- **Font matching:** font family (sans/serif/mono), size and color are taken from the text inside the field or from the label next to or above it. Custom TTF/OTF fonts can be embedded.
+- **Smart Align:** snapping to the edges of other fields and to lines in the template (hold Alt to bypass snapping).
+- **Automatic tab order** from top left to bottom right, also on rotated pages.
+- **Smart Fields:** email, date (DD.MM.YYYY, date picker in Acrobat mobile), phone, number, postal code.
+- **Smart Contrast:** the input color automatically turns light on dark backgrounds.
+- **Reset button** as its own field type.
+- **Page management:** rotate, reorder (drag), delete, append more PDFs.
+- **Same field name on several pages:** asks whether to keep them in sync (one field with several widgets) or to separate them (suffix `_S1`, `_S2` …).
+- **Multi-selection:** shift-click or selection rectangle; move, align, distribute evenly, match width/height and set properties together.
+- **Copy and paste** fields (⌘/Ctrl C/V), also onto other pages.
+- **Field names from labels:** a field drawn next to “First name” is automatically named `First_name`.
+- **Test mode** (⌘/Ctrl E): fill in the form right in the app, including tab order, ghost text, format validation and synced fields.
+- **Preflight before export:** warnings about overlapping fields, fields beyond the page edge, very small fonts, name conflicts and radio groups with only one option.
+- **Help when nothing is found:** if no placeholders are detected, the app explains the likely cause.
+- **Touch:** pinch-to-zoom and large handles on iPad, properties as a bottom sheet on phones; Ctrl/⌘ + mouse wheel or trackpad on desktop.
 
-## Grenzen und technische Hinweise
+## Limitations and technical notes
 
-- **Eingabeschriften:** Beim Tippen in ein Formularfeld braucht der PDF-Reader die vollständige Schrift. Die meisten Programme betten nur die verwendeten Zeichen ein. Die App ordnet deshalb Helvetica, Times oder Courier zu (inkl. Fett/Kursiv) oder bettet eine hochgeladene Schrift vollständig ein.
-- **Validierungen und Ghost-Text** nutzen Acrobat-JavaScript. Sie wirken in Adobe Acrobat/Reader (Desktop und Mobil). Andere Viewer zeigen den Ghost-Text als Darstellung an und ignorieren die Prüfungen.
-- **Statischer Text** wird nicht gelöscht, sondern über den Textrender-Modus 3 unsichtbar gemacht. Layout und Abstände bleiben dadurch unverändert.
-- **Automatische Erkennung** braucht echten Text in der PDF. Bei Scans oder in Pfade umgewandelter Schrift werden Tags nicht gefunden; Felder lassen sich dort manuell anlegen.
-- **Verschlüsselte PDFs** müssen vorher ohne Passwortschutz exportiert werden.
+- **Input fonts:** when typing into a form field, the PDF reader needs the complete font. Most apps only embed the characters actually used. The app therefore maps to Helvetica, Times or Courier (incl. bold/italic) or fully embeds an uploaded font.
+- **Validation and ghost text** use Acrobat JavaScript. They work in Adobe Acrobat/Reader (desktop and mobile). Other viewers show the ghost text as part of the appearance and ignore the checks.
+- **Static text** is not deleted but made invisible with text render mode 3, so the template's layout and spacing stay unchanged.
+- **Automatic detection** needs real text in the PDF. Tags cannot be found in scans or in text converted to outlines; fields can be added manually there.
+- **Encrypted PDFs** must be exported without password protection first.
+- **Formats:** dates use DD.MM.YYYY, numbers use 1.234,56 and postal codes allow 4–5 digits (DE/AT/CH conventions).
 
-## Entwicklung
+## Development
 
 ```bash
 npm install
-npm run dev          # Entwicklungsserver
-npm test             # Tests (Erkennung, Export, Geometrie, Performance)
-npm run build        # Web-App in dist/
-npm run build:single # eine einzige HTML-Datei in dist-single/
+npm run dev          # development server
+npm test             # tests (detection, export, geometry, performance)
+npm run build        # web app in dist/
+npm run build:single # a single HTML file in dist-single/
 ```
 
-Benötigt Node.js 20 oder neuer. Die Beispiel-PDFs in `src/assets/` werden von `scripts/make-samples.mjs` erzeugt (automatisch vor `dev`, `build` und `test`).
+Requires Node.js 20 or newer. The sample PDFs in `src/assets/` are generated by `scripts/make-samples.mjs` (automatically before `dev`, `build` and `test`).
 
-### Aufbau
+### Structure
 
-| Pfad | Inhalt |
+| Path | Contents |
 | --- | --- |
-| `src/pdf/tokenizer.ts`, `src/pdf/interpreter.ts` | Content-Stream-Parser: Ebenen, Pfade, Text, Schriften, Farben |
-| `src/pdf/analyze.ts` | Analyse einer PDF (pdf-lib + pdf.js) |
-| `src/pdf/detect.ts` | Namenskonvention, Feld-Erkennung, Schrift- und Farbzuordnung |
-| `src/pdf/export.ts` | AcroForm-Export, Text ausblenden, Seiten zusammenstellen, Tab-Reihenfolge |
-| `src/ui/` | Editor: Viewer, Seitenleiste, Eigenschaften, Aktionen |
-| `test/` | Vitest-Tests |
+| `src/pdf/tokenizer.ts`, `src/pdf/interpreter.ts` | Content stream parser: layers, paths, text, fonts, colors |
+| `src/pdf/analyze.ts` | Analysis of a PDF (pdf-lib + pdf.js) |
+| `src/pdf/detect.ts` | Naming convention, field detection, font and color mapping |
+| `src/pdf/export.ts` | AcroForm export, hiding text, assembling pages, tab order |
+| `src/ui/` | Editor: viewer, page rail, properties, multi-selection, test mode, preflight |
+| `test/` | Vitest tests |
 
-### Automatische Tests und GitHub Pages einrichten
+### Setting up CI and GitHub Pages
 
-Die Workflow-Vorlagen liegen in `docs/workflows/`:
+The workflow templates live in `docs/workflows/`:
 
-- `ci.yml` führt bei jedem Push und Pull Request Tests und Build aus.
-- `pages.yml` baut die App bei jedem Push auf `main` und veröffentlicht sie auf GitHub Pages.
+- `ci.yml` runs tests and the build on every push and pull request.
+- `pages.yml` builds the app on every push to `main` and publishes it to GitHub Pages.
 
-Einmalig einrichten:
+One-time setup:
 
-1. Beide Dateien nach `.github/workflows/` kopieren (im GitHub-Webinterface: „Add file → Create new file“, als Namen `.github/workflows/ci.yml` eingeben und den Inhalt einfügen; dasselbe für `pages.yml`).
-2. Unter **Settings → Pages → Build and deployment → Source** die Option **GitHub Actions** wählen.
+1. Copy both files to `.github/workflows/` (in the GitHub web interface: “Add file → Create new file”, enter `.github/workflows/ci.yml` as the name and paste the content; same for `pages.yml`).
+2. Under **Settings → Pages → Build and deployment → Source**, choose **GitHub Actions**.
 
-Danach ist die App nach jedem Push unter `https://<organisation>.github.io/pdf-form-maker/` erreichbar.
+After that, the app is available at `https://<organization>.github.io/pdf-form-maker/` after every push.

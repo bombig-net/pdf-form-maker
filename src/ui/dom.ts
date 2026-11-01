@@ -1,7 +1,7 @@
 type Attrs = Record<string, string | number | boolean | undefined | null | EventListener>;
 type Child = Node | string | null | undefined | false;
 
-/** Kleiner Element-Helfer: h('button.primary', {onclick}, 'Text') */
+/** Small element helper: h('button.primary', {onclick}, 'Text') */
 export function h<T extends HTMLElement = HTMLElement>(tag: string, attrs: Attrs = {}, ...children: (Child | Child[])[]): T {
   const [name, ...classes] = tag.split('.');
   const el = document.createElement(name || "div") as T;

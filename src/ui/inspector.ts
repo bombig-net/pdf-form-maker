@@ -6,19 +6,19 @@ import { uid, round2 } from '../util/geom';
 import type { Viewer } from './viewer';
 
 const TYPES: { v: FieldType; label: string }[] = [
-  { v: 'text', label: 'Textfeld' },
-  { v: 'area', label: 'Textbereich (mehrzeilig)' },
+  { v: 'text', label: 'Text field' },
+  { v: 'area', label: 'Text area (multi-line)' },
   { v: 'check', label: 'Checkbox' },
-  { v: 'radio', label: 'Radio-Button' },
-  { v: 'reset', label: 'Zurücksetzen-Button' },
+  { v: 'radio', label: 'Radio button' },
+  { v: 'reset', label: 'Reset button' },
 ];
 const FORMATS: { v: FormatKind; label: string; hint: string }[] = [
-  { v: 'none', label: 'Freitext', hint: '' },
-  { v: 'email', label: 'E-Mail', hint: 'Prüft beim Verlassen des Feldes auf eine gültige Adresse.' },
-  { v: 'date', label: 'Datum', hint: 'Format TT.MM.JJJJ – Acrobat Reader zeigt auf Mobilgeräten einen Kalender.' },
-  { v: 'phone', label: 'Telefon', hint: 'Erlaubt nur Ziffern, Leerzeichen und + ( ) / -.' },
-  { v: 'number', label: 'Zahl', hint: 'Zahl mit zwei Nachkommastellen (1.234,56).' },
-  { v: 'zip', label: 'Postleitzahl', hint: 'Nur Ziffern, 4–5 Stellen.' },
+  { v: 'none', label: 'Free text', hint: '' },
+  { v: 'email', label: 'Email', hint: 'Checks for a valid address when the field is left.' },
+  { v: 'date', label: 'Date', hint: 'Format DD.MM.YYYY – Acrobat Reader shows a date picker on mobile devices.' },
+  { v: 'phone', label: 'Phone', hint: 'Allows only digits, spaces and + ( ) / -.' },
+  { v: 'number', label: 'Number', hint: 'Number with two decimals (1.234,56).' },
+  { v: 'zip', label: 'Postal code', hint: 'Digits only, 4–5 characters.' },
 ];
 
 export class Inspector {
@@ -53,56 +53,56 @@ export class Inspector {
     this.el.classList.toggle('has-selection', !!f);
   }
 
-  /* ---------------- Dokument-Übersicht ---------------- */
+  /* ---------------- Document overview ---------------- */
 
   private docPanel(): HTMLElement {
     const wrap = h('div.panel');
     const counts: Record<string, number> = {};
     for (const f of store.fields) counts[f.type] = (counts[f.type] ?? 0) + 1;
     const total = store.fields.length;
-    wrap.append(h('h2.panel-title', {}, 'Formular'));
+    wrap.append(h('h2.panel-title', {}, 'Form'));
     wrap.append(h('p.panel-lead', {}, total
-      ? `${total} ${total === 1 ? 'Feld' : 'Felder'} auf ${store.pages.length} ${store.pages.length === 1 ? 'Seite' : 'Seiten'}.`
-      : 'Noch keine Felder. Wähle oben ein Werkzeug und zieh ein Feld auf der Seite auf.'));
+      ? `${total} ${total === 1 ? 'field' : 'fields'} on ${store.pages.length} ${store.pages.length === 1 ? 'page' : 'pages'}.`
+      : 'No fields yet. Pick a tool above and drag a field onto the page.'));
 
-    // Liste nach Seiten
+    // List by page
     if (total) {
       const list = h('div.field-list');
       store.pages.forEach((p, i) => {
         const fs = store.fields.filter((f) => f.pageId === p.id);
         if (!fs.length) return;
-        list.append(h('div.field-list-page', {}, `Seite ${i + 1}`));
+        list.append(h('div.field-list-page', {}, `Page ${i + 1}`));
         for (const f of fs) {
           list.append(h('button.field-row', {
             type: 'button', 'data-type': f.type,
             onclick: () => { store.select(f.id); this.viewer.scrollToField(f.id); },
           }, h('span.dot'), h('span.field-row-name', {}, f.type === 'radio' ? `${f.name} · ${f.radioValue}` : f.type === 'reset' ? f.label : f.name),
-          h('span.field-row-src', {}, f.source === 'layer' ? 'Ebene' : f.source === 'tag' ? 'Tag' : f.source === 'import' ? 'vorhanden' : '')));
+          h('span.field-row-src', {}, f.source === 'layer' ? 'Layer' : f.source === 'tag' ? 'Tag' : f.source === 'import' ? 'existing' : '')));
         }
       });
       wrap.append(list);
     }
 
-    wrap.append(h('h3.section-title', {}, 'Optionen'));
-    wrap.append(this.toggle('Tab-Reihenfolge anzeigen', store.options.showTabOrder, (v) => { store.options.showTabOrder = v; store.emit('options'); },
-      'Die Reihenfolge wird automatisch von links oben nach rechts unten berechnet.'));
-    wrap.append(this.toggle('Einrasten an Linien und Feldern', store.options.snap, (v) => { store.options.snap = v; store.emit('options'); },
-      'Beim Ziehen Alt gedrückt halten, um das Einrasten kurz zu umgehen.'));
-    wrap.append(this.toggle('Platzhalter-Ebenen im Export ausblenden', store.options.hidePlaceholderLayers, (v) => { store.options.hidePlaceholderLayers = v; store.emit('options'); },
-      'Schaltet Ebenen mit Namen wie [Form_Text_…] in der fertigen PDF unsichtbar.'));
+    wrap.append(h('h3.section-title', {}, 'Options'));
+    wrap.append(this.toggle('Show tab order', store.options.showTabOrder, (v) => { store.options.showTabOrder = v; store.emit('options'); },
+      'The order is calculated automatically from top left to bottom right.'));
+    wrap.append(this.toggle('Snap to lines and fields', store.options.snap, (v) => { store.options.snap = v; store.emit('options'); },
+      'Hold Alt while dragging to bypass snapping temporarily.'));
+    wrap.append(this.toggle('Hide placeholder layers on export', store.options.hidePlaceholderLayers, (v) => { store.options.hidePlaceholderLayers = v; store.emit('options'); },
+      'Turns off layers named like [Form_Text_…] in the final PDF.'));
 
-    wrap.append(h('h3.section-title', {}, 'Kurzbefehle'));
+    wrap.append(h('h3.section-title', {}, 'Shortcuts'));
     wrap.append(h('dl.shortcuts', {},
-      ...[['V', 'Auswählen'], ['T / A', 'Textfeld / Textbereich'], ['C / R', 'Checkbox / Radio'], ['⇧ Klick', 'Mehrere Felder auswählen'], ['Ziehen', 'Auswahlrahmen auf leerer Fläche'], ['Entf', 'Auswahl löschen'], ['Pfeile', 'Verschieben (⇧ = 10 pt)'], ['⌘/Strg C / V', 'Kopieren und einfügen'], ['⌘/Strg A', 'Alle Felder der Seite'], ['⌘/Strg D', 'Feld duplizieren'], ['⌘/Strg Z', 'Rückgängig'], ['⌘/Strg E', 'Formular testen']]
+      ...[['V', 'Select'], ['T / A', 'Text field / text area'], ['C / R', 'Checkbox / radio'], ['⇧ Click', 'Select multiple fields'], ['Drag', 'Selection rectangle on empty space'], ['Del', 'Delete selection'], ['Arrows', 'Move (⇧ = 10 pt)'], ['⌘/Ctrl C / V', 'Copy and paste'], ['⌘/Ctrl A', 'All fields on the page'], ['⌘/Ctrl D', 'Duplicate field'], ['⌘/Ctrl Z', 'Undo'], ['⌘/Ctrl E', 'Test the form']]
         .flatMap(([k, v]) => [h('dt', {}, h('kbd', {}, k)), h('dd', {}, v)])));
     return wrap;
   }
 
-  /* ---------------- Feld-Eigenschaften ---------------- */
+  /* ---------------- Field properties ---------------- */
 
   private fieldPanel(f: Field): HTMLElement {
     const wrap = h('div.panel', { 'data-type': f.type });
-    const close = h('button.icon-btn', { type: 'button', 'aria-label': 'Auswahl aufheben', title: 'Schließen', onclick: () => store.select(null) });
+    const close = h('button.icon-btn', { type: 'button', 'aria-label': 'Clear selection', title: 'Close', onclick: () => store.select(null) });
     close.innerHTML = icons.close;
     wrap.append(h('div.panel-head', {}, h('span.type-dot'), h('h2.panel-title', {}, TYPES.find((t) => t.v === f.type)!.label), close));
 
@@ -113,7 +113,7 @@ export class Inspector {
         if (ff) ff[key] = val;
       }, kinds, `${fid}:${String(key)}`);
     };
-    /** Eigenschaften, die für alle gleichnamigen Felder gelten (ein PDF-Feld). */
+    /** Properties shared by all fields with the same name (one PDF field). */
     const setShared = <K extends keyof Field>(key: K, val: Field[K]) => {
       const fid = f.id;
       store.commit(() => {
@@ -123,7 +123,7 @@ export class Inspector {
       }, ['fields'], `${fid}:${String(key)}`);
     };
 
-    // Typ
+    // Type
     const typeSel = h<HTMLSelectElement>('select', { name: 'type', onchange: (e: Event) => {
       const t = (e.target as HTMLSelectElement).value as FieldType;
       const fid = f.id;
@@ -131,27 +131,27 @@ export class Inspector {
         const ff = store.fields.find((x) => x.id === fid)!;
         ff.type = t;
         if (t === 'radio' && !ff.radioValue) ff.radioValue = 'Option1';
-        if (t === 'reset' && !ff.label) ff.label = 'Formular zurücksetzen';
+        if (t === 'reset' && !ff.label) ff.label = 'Reset form';
         if (t === 'area' && !ff.fontSize) ff.fontSize = 10;
       }, ['fields', 'selection']);
       this.render();
     } }, ...TYPES.map((t) => h('option', { value: t.v, selected: t.v === f.type }, t.label)));
-    wrap.append(this.row('Typ', typeSel));
+    wrap.append(this.row('Type', typeSel));
 
     // Name
-    const nameLabel = f.type === 'radio' ? 'Gruppe' : 'Feldname';
+    const nameLabel = f.type === 'radio' ? 'Group' : 'Field name';
     const nameIn = this.input('name', f.name, (v) => set('name', v.replace(/[.\s]+/g, '_')));
     wrap.append(this.row(nameLabel, nameIn));
     const syncInfo = h('p.hint.sync-info');
     wrap.append(syncInfo);
-    if (f.type === 'radio') wrap.append(this.row('Wert', this.input('radioValue', f.radioValue, (v) => set('radioValue', v.replace(/[.\s]+/g, '_')))));
-    if (f.type === 'reset') wrap.append(this.row('Beschriftung', this.input('label', f.label, (v) => set('label', v))));
+    if (f.type === 'radio') wrap.append(this.row('Value', this.input('radioValue', f.radioValue, (v) => set('radioValue', v.replace(/[.\s]+/g, '_')))));
+    if (f.type === 'reset') wrap.append(this.row('Caption', this.input('label', f.label, (v) => set('label', v))));
 
-    // Eingabe
+    // Input
     if (f.type === 'text' || f.type === 'area') {
-      wrap.append(h('h3.section-title', {}, 'Eingabe'));
+      wrap.append(h('h3.section-title', {}, 'Input'));
       if (f.type === 'text') {
-        const chips = h('div.chips', { role: 'radiogroup', 'aria-label': 'Verwendungszweck' });
+        const chips = h('div.chips', { role: 'radiogroup', 'aria-label': 'Purpose' });
         const hint = h('p.hint', {}, FORMATS.find((x) => x.v === f.format)?.hint ?? '');
         for (const fm of FORMATS) {
           chips.append(h('button.chip', {
@@ -159,75 +159,75 @@ export class Inspector {
             onclick: () => { setShared('format', fm.v); this.render(); },
           }, fm.label));
         }
-        wrap.append(this.row('Zweck', chips), hint);
+        wrap.append(this.row('Purpose', chips), hint);
       }
-      wrap.append(this.row('Platzhalter', this.input('placeholder', f.placeholder, (v) => setShared('placeholder', v), 'Grauer Hinweistext, verschwindet beim Tippen')));
-      const al = h('div.segmented', { role: 'radiogroup', 'aria-label': 'Ausrichtung' });
-      for (const [v, l] of [['left', 'Links'], ['center', 'Mitte'], ['right', 'Rechts']] as const) {
+      wrap.append(this.row('Placeholder', this.input('placeholder', f.placeholder, (v) => setShared('placeholder', v), 'Gray hint text, disappears when typing')));
+      const al = h('div.segmented', { role: 'radiogroup', 'aria-label': 'Alignment' });
+      for (const [v, l] of [['left', 'Left'], ['center', 'Center'], ['right', 'Right']] as const) {
         al.append(h('button', { type: 'button', role: 'radio', 'aria-checked': String(f.align === v), onclick: () => { setShared('align', v); this.render(); } }, l));
       }
-      wrap.append(this.row('Ausrichtung', al));
-      wrap.append(this.row('Max. Zeichen', this.number('maxLength', f.maxLength, (v) => setShared('maxLength', Math.max(0, Math.round(v))), 0, 1, '0 = unbegrenzt')));
+      wrap.append(this.row('Alignment', al));
+      wrap.append(this.row('Max. length', this.number('maxLength', f.maxLength, (v) => setShared('maxLength', Math.max(0, Math.round(v))), 0, 1, '0 = unlimited')));
     }
     if (f.type !== 'reset') {
-      wrap.append(this.toggle('Pflichtfeld', f.required, (v) => setShared('required', v)));
+      wrap.append(this.toggle('Required', f.required, (v) => setShared('required', v)));
     }
-    wrap.append(this.toggle('Text darunter ausblenden', f.hideText, (v) => set('hideText', v),
-      'Statischer Text aus der Vorlage im Feldbereich wird im Export unsichtbar.'));
+    wrap.append(this.toggle('Hide text underneath', f.hideText, (v) => set('hideText', v),
+      'Static text from the template inside the field area becomes invisible on export.'));
 
-    // Schrift
+    // Font
     if (f.type !== 'check' && f.type !== 'radio') {
-      wrap.append(h('h3.section-title', {}, 'Schrift'));
+      wrap.append(h('h3.section-title', {}, 'Font'));
       const fam = h<HTMLSelectElement>('select', { name: 'fontFamily', onchange: async (e: Event) => {
         const v = (e.target as HTMLSelectElement).value;
         if (v === '__upload') { (e.target as HTMLSelectElement).value = f.fontFamily; await this.uploadFont(f); return; }
         setShared('fontFamily', v);
       } },
-        h('option', { value: 'Helvetica', selected: f.fontFamily === 'Helvetica' }, 'Helvetica (Sans)'),
-        h('option', { value: 'Times', selected: f.fontFamily === 'Times' }, 'Times (Serif)'),
-        h('option', { value: 'Courier', selected: f.fontFamily === 'Courier' }, 'Courier (Mono)'),
+        h('option', { value: 'Helvetica', selected: f.fontFamily === 'Helvetica' }, 'Helvetica (sans)'),
+        h('option', { value: 'Times', selected: f.fontFamily === 'Times' }, 'Times (serif)'),
+        h('option', { value: 'Courier', selected: f.fontFamily === 'Courier' }, 'Courier (mono)'),
         ...store.customFonts.map((c) => h('option', { value: 'custom:' + c.id, selected: f.fontFamily === 'custom:' + c.id }, c.name)),
-        h('option', { value: '__upload' }, 'Eigene Schrift laden …'),
+        h('option', { value: '__upload' }, 'Upload your own font …'),
       );
-      wrap.append(this.row('Familie', fam));
+      wrap.append(this.row('Family', fam));
       const style = h('div.segmented', {},
-        h('button', { type: 'button', 'aria-pressed': String(f.bold), onclick: () => { setShared('bold', !f.bold); this.render(); }, style: 'font-weight:700' }, 'Fett'),
-        h('button', { type: 'button', 'aria-pressed': String(f.italic), onclick: () => { setShared('italic', !f.italic); this.render(); }, style: 'font-style:italic' }, 'Kursiv'));
-      if (!f.fontFamily.startsWith('custom:')) wrap.append(this.row('Stil', style));
-      wrap.append(this.row('Größe', this.number('fontSize', f.fontSize || 0, (v) => setShared('fontSize', Math.max(0, Math.min(144, v))), 0, 0.5, '0 = automatisch'), 'pt'));
+        h('button', { type: 'button', 'aria-pressed': String(f.bold), onclick: () => { setShared('bold', !f.bold); this.render(); }, style: 'font-weight:700' }, 'Bold'),
+        h('button', { type: 'button', 'aria-pressed': String(f.italic), onclick: () => { setShared('italic', !f.italic); this.render(); }, style: 'font-style:italic' }, 'Italic'));
+      if (!f.fontFamily.startsWith('custom:')) wrap.append(this.row('Style', style));
+      wrap.append(this.row('Size', this.number('fontSize', f.fontSize || 0, (v) => setShared('fontSize', Math.max(0, Math.min(144, v))), 0, 0.5, '0 = auto'), 'pt'));
     }
     const colorIn = h<HTMLInputElement>('input', { type: 'color', name: 'color', value: toHex(f.color), oninput: (e: Event) => setShared('color', fromHex((e.target as HTMLInputElement).value)) });
-    const eff = h('span.effective', { title: 'Tatsächlich verwendete Farbe' }, h('span.swatch'), h('span.eff-note'));
-    wrap.append(this.row(f.type === 'check' || f.type === 'radio' ? 'Farbe Haken' : 'Textfarbe', h('div.color-row', {}, colorIn, eff)));
+    const eff = h('span.effective', { title: 'Color actually used' }, h('span.swatch'), h('span.eff-note'));
+    wrap.append(this.row(f.type === 'check' || f.type === 'radio' ? 'Mark color' : 'Text color', h('div.color-row', {}, colorIn, eff)));
     if (f.type === 'reset') {
-      wrap.append(this.row('Hintergrund', h<HTMLInputElement>('input', { type: 'color', name: 'buttonBg', value: toHex(f.buttonBg), oninput: (e: Event) => set('buttonBg', fromHex((e.target as HTMLInputElement).value)) })));
+      wrap.append(this.row('Background', h<HTMLInputElement>('input', { type: 'color', name: 'buttonBg', value: toHex(f.buttonBg), oninput: (e: Event) => set('buttonBg', fromHex((e.target as HTMLInputElement).value)) })));
     }
     wrap.append(this.toggle('Smart Contrast', f.autoContrast, (v) => setShared('autoContrast', v),
-      'Wählt automatisch Schwarz oder Weiß, wenn die Farbe auf dem Hintergrund schlecht lesbar wäre.'));
+      'Automatically uses black or white if the color would be hard to read on the background.'));
 
     // Position
     wrap.append(h('h3.section-title', {}, 'Position (pt)'));
     const grid = h('div.pos-grid');
-    for (const [k, l] of [['x', 'X'], ['y', 'Y'], ['w', 'Breite'], ['h', 'Höhe']] as const) {
+    for (const [k, l] of [['x', 'X'], ['y', 'Y'], ['w', 'Width'], ['h', 'Height']] as const) {
       grid.append(h('label.pos', {}, h('span', {}, l), this.number('rect.' + k, f.rect[k], (v) => {
         const fid = f.id;
         store.commit(() => { const ff = store.fields.find((x) => x.id === fid); if (ff) ff.rect = { ...ff.rect, [k]: k === 'w' || k === 'h' ? Math.max(2, v) : v }; }, ['fields'], `${fid}:rect.${k}`);
       }, undefined, 0.5)));
     }
     wrap.append(grid);
-    wrap.append(this.row('Tooltip', this.input('tooltip', f.tooltip, (v) => set('tooltip', v), 'Hilfetext beim Überfahren')));
+    wrap.append(this.row('Tooltip', this.input('tooltip', f.tooltip, (v) => set('tooltip', v), 'Help text on hover')));
 
-    // Aktionen
-    const dup = h('button.btn.secondary', { type: 'button', onclick: () => duplicateField(f.id) }, 'Duplizieren');
+    // Actions
+    const dup = h('button.btn.secondary', { type: 'button', onclick: () => duplicateField(f.id) }, 'Duplicate');
     const del = h('button.btn.danger', { type: 'button', onclick: () => deleteField(f.id) });
-    del.innerHTML = `${icons.trash}<span>Löschen</span>`;
+    del.innerHTML = `${icons.trash}<span>Delete</span>`;
     wrap.append(h('div.panel-actions', {}, dup, del));
 
     queueMicrotask(() => this.refreshValues());
     return wrap;
   }
 
-  /** Werte aktualisieren ohne Neuaufbau (z. B. beim Verschieben), fokussierte Eingaben bleiben unberührt. */
+  /** Update values without rebuilding (e.g. while moving); focused inputs are left untouched. */
   private refreshValues() {
     const f = store.selected;
     if (!f) return;
@@ -245,19 +245,19 @@ export class Inspector {
       const sw = eff.querySelector<HTMLElement>('.swatch')!;
       sw.style.background = toHex(c);
       sw.style.setProperty('--bg', f.type === 'reset' ? toHex(f.buttonBg) : f.bgColor ? toHex(f.bgColor) : '#fff');
-      eff.querySelector<HTMLElement>('.eff-note')!.textContent = 'Smart Contrast aktiv';
+      eff.querySelector<HTMLElement>('.eff-note')!.textContent = 'Smart Contrast active';
       eff.hidden = !changed;
     }
     const sync = this.body.querySelector<HTMLElement>('.sync-info');
     if (sync) {
       const others = store.fields.filter((x) => x.id !== f.id && x.name === f.name && x.type === f.type);
-      if (f.type === 'radio') sync.textContent = others.length ? `Gruppe mit ${others.length + 1} Optionen.` : 'Weitere Radio-Buttons mit gleicher Gruppe bilden eine Auswahl.';
+      if (f.type === 'radio') sync.textContent = others.length ? `Group with ${others.length + 1} options.` : 'Radio buttons with the same group form one choice.';
       else if (others.length) {
         const pages = [...new Set(others.map((x) => store.pageNumber(x.pageId)))].sort((a, b) => a - b);
-        sync.textContent = `Synchronisiert mit ${others.length} weiteren ${others.length === 1 ? 'Feld' : 'Feldern'} (Seite ${pages.join(', ')}). Eingaben erscheinen überall.`;
+        sync.textContent = `Synced with ${others.length} other ${others.length === 1 ? 'field' : 'fields'} (page ${pages.join(', ')}). Input appears everywhere.`;
       } else sync.textContent = '';
       const clash = store.fields.some((x) => x.name === f.name && x.type !== f.type && f.type !== 'reset' && x.type !== 'reset');
-      if (clash) sync.textContent = 'Dieser Name wird bereits für einen anderen Feldtyp verwendet und erhält beim Export ein Suffix.';
+      if (clash) sync.textContent = 'This name is already used for a different field type and will get a suffix on export.';
     }
   }
 
@@ -266,7 +266,7 @@ export class Inspector {
     inp.onchange = async () => {
       const file = inp.files?.[0];
       if (!file) return;
-      if (!/\.(ttf|otf)$/i.test(file.name)) { toast('Bitte eine TTF- oder OTF-Datei wählen.', 'warn'); return; }
+      if (!/\.(ttf|otf)$/i.test(file.name)) { toast('Please choose a TTF or OTF file.', 'warn'); return; }
       const bytes = new Uint8Array(await file.arrayBuffer());
       const cf = { id: uid('font'), name: file.name.replace(/\.(ttf|otf)$/i, ''), bytes };
       store.customFonts.push(cf);
@@ -276,12 +276,12 @@ export class Inspector {
         if (ff) for (const x of store.fields) if (x.name === ff.name && x.type === ff.type) x.fontFamily = 'custom:' + cf.id;
       });
       this.render();
-      toast(`Schrift „${cf.name}“ wird beim Export vollständig eingebettet.`);
+      toast(`The font “${cf.name}” will be fully embedded on export.`);
     };
     inp.click();
   }
 
-  /* ---------------- Formular-Bausteine ---------------- */
+  /* ---------------- Form building blocks ---------------- */
 
   private row(label: string, control: HTMLElement, suffix?: string): HTMLElement {
     const id = uid('in');
@@ -295,7 +295,7 @@ export class Inspector {
   private number(name: string, value: number, on: (v: number) => void, min?: number, step = 1, title?: string): HTMLInputElement {
     return h<HTMLInputElement>('input', {
       type: 'number', name, value: (name === 'maxLength' || name === 'fontSize') && !value ? '' : String(round2(value)), min, step, title, inputmode: 'decimal',
-      placeholder: name === 'maxLength' ? 'unbegrenzt' : name === 'fontSize' ? 'auto' : undefined,
+      placeholder: name === 'maxLength' ? 'unlimited' : name === 'fontSize' ? 'auto' : undefined,
       oninput: (e: Event) => { const raw = (e.target as HTMLInputElement).value.replace(',', '.'); const v = raw === '' ? 0 : parseFloat(raw); if (!isNaN(v)) on(v); },
     });
   }

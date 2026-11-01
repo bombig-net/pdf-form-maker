@@ -1,6 +1,6 @@
-/* PDF Form Maker – Gestaltung
-   Idee: Druckvorstufe. Die Arbeitsfläche ist die graue Montagefläche, Seiten liegen wie Bögen darauf,
-   Feldtypen tragen die Prozessfarben (Cyan, Magenta, Gelb) – so wie Designer es aus Affinity kennen. */
+/* PDF Form Maker – design
+   Idea: prepress. The workspace is the gray pasteboard, pages lie on it like printed sheets,
+   and field types carry the process colors (cyan, magenta, yellow) familiar from prepress. */
 
 :root {
   color-scheme: light;
@@ -107,7 +107,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .icon-btn[disabled] { opacity: 0.35; cursor: default; }
 .icon-btn.danger:hover { color: var(--danger); }
 
-/* ---------- Druckfarben-Marke ---------- */
+/* ---------- Process color mark ---------- */
 .mark { display: inline-flex; align-items: center; gap: 0; margin: 0; }
 .mark .ink { width: 14px; height: 14px; border-radius: 50%; mix-blend-mode: multiply; margin-right: -5px; }
 .mark .ink.c { background: #00a0dc; }
@@ -119,7 +119,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .mark.small .ink { width: 11px; height: 11px; margin-right: -4px; }
 
 /* ================================================================= */
-/* Startseite                                                         */
+/* Start page                                                         */
 /* ================================================================= */
 .start {
   min-height: 100%;
@@ -153,7 +153,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .start-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .privacy { margin: 28px 0 0; color: var(--ink-3); font-size: 13px; }
 
-/* Schnittmarken */
+/* Crop marks */
 .crop { position: absolute; width: 22px; height: 22px; pointer-events: none; }
 .crop::before, .crop::after { content: ''; position: absolute; background: var(--ink-3); }
 .crop::before { width: 22px; height: 1px; }
@@ -230,7 +230,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .tool[data-tool='radio'][aria-pressed='true'] { color: var(--c-radio); }
 .tool[data-tool='reset'][aria-pressed='true'] { color: var(--c-reset); }
 
-/* ---------- Seitenleiste ---------- */
+/* ---------- Page rail ---------- */
 .rail {
   grid-area: rail;
   display: flex; flex-direction: column;
@@ -291,7 +291,7 @@ code { font-family: var(--mono); font-size: 0.92em; }
 .viewer[data-tool='select'] .overlay { cursor: default; }
 .viewer:not([data-tool='select']) .overlay { cursor: crosshair; touch-action: none; }
 
-/* Felder */
+/* Fields */
 .field {
   position: absolute;
   --c: var(--c-text);
@@ -404,7 +404,7 @@ input[role='switch']:checked::after { transform: translateX(14px); }
 .shortcuts dd { margin: 0; color: var(--ink-2); }
 kbd { font: 600 11.5px/1 var(--font); padding: 3px 6px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); white-space: nowrap; }
 
-/* ---------- Dialog, Toasts, Busy ---------- */
+/* ---------- Dialog, toasts, busy ---------- */
 .modal { border: 0; border-radius: 12px; padding: 24px; width: min(520px, calc(100vw - 32px)); background: var(--paper); color: var(--ink); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); }
 .modal::backdrop { background: rgba(16, 20, 28, 0.45); }
 .modal h2 { margin: 0 0 6px; font-size: 18px; }
@@ -427,7 +427,7 @@ kbd { font: 600 11.5px/1 var(--font); padding: 3px 6px; border-radius: 4px; back
 .spinner { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--line-2); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---------- Schmale Bildschirme (iPad hochkant, Telefon) ---------- */
+/* ---------- Narrow screens (iPad portrait, phone) ---------- */
 @media (max-width: 1100px) { :root { --insp-w: 280px; --rail-w: 136px; } }
 @media (max-width: 899px) {
   .editor { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'bar' 'viewer'; }

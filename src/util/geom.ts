@@ -3,7 +3,7 @@ import type { Rect } from '../types';
 export type M6 = [number, number, number, number, number, number];
 export const IDENT: M6 = [1, 0, 0, 1, 0, 0];
 
-/** m1 × m2 (erst m1, dann m2) – PDF-Konvention. */
+/** m1 × m2 (m1 first, then m2) – PDF convention. */
 export function mul(m1: M6, m2: M6): M6 {
   return [
     m1[0] * m2[0] + m1[1] * m2[2],
@@ -28,7 +28,7 @@ export function bboxContains(b: [number, number, number, number], x: number, y: 
   return x >= b[0] - tol && x <= b[2] + tol && y >= b[1] - tol && y <= b[3] + tol;
 }
 
-/** Abbildung PDF-User-Space -> Bildschirm (CSS px) für eine Seite mit View-Box, Drehung (im Uhrzeigersinn) und Maßstab. */
+/** Maps PDF user space -> screen (CSS px) for a page with view box, rotation (clockwise) and scale. */
 export interface ViewGeom { view: [number, number, number, number]; rotation: number; scale: number }
 
 const norm = (r: number) => ((r % 360) + 360) % 360;

@@ -1,6 +1,6 @@
 /**
- * Minimaler, robuster Tokenizer für PDF-Content-Streams.
- * Liefert Operatoren mit ihren Operanden sowie Byte-Offsets (für spätere Umschreibungen).
+ * Minimal, robust tokenizer for PDF content streams.
+ * Yields operators with their operands and byte offsets (for later rewriting).
  */
 
 export type CSName = { t: 'name'; v: string };
@@ -11,9 +11,9 @@ export type CSObj = number | boolean | null | CSName | CSStr | CSDict | CSObj[];
 export interface CSOp {
   op: string;
   args: CSObj[];
-  /** Offset des ersten Operanden (bzw. des Operators, wenn keine Operanden) */
+  /** Offset of the first operand (or of the operator if it has no operands) */
   start: number;
-  /** Offset direkt nach dem Operator */
+  /** Offset right after the operator */
   end: number;
 }
 
@@ -29,7 +29,7 @@ export { isName };
 export function* tokenizeOps(buf: Uint8Array): Generator<CSOp> {
   const n = buf.length;
   let i = 0;
-  // Operandenstapel mit Container-Stack
+  // Operand stack with container stack
   let stack: CSObj[] = [];
   const containers: { kind: 'arr' | 'dict'; items: CSObj[] }[] = [];
   let opStart = -1;
@@ -75,7 +75,7 @@ export function* tokenizeOps(buf: Uint8Array): Generator<CSOp> {
             case 116: out.push(9); break; // t
             case 98: out.push(8); break; // b
             case 102: out.push(12); break; // f
-            case 13: if (buf[i] === 10) i++; break; // Zeilenfortsetzung
+            case 13: if (buf[i] === 10) i++; break; // line continuation
             case 10: break;
             default:
               if (nx >= 48 && nx <= 55) {
@@ -137,16 +137,16 @@ export function* tokenizeOps(buf: Uint8Array): Generator<CSOp> {
     }
     if (c === 123 || c === 125 || c === 41) { i++; continue; }
 
-    // Zahl oder Schlüsselwort
+    // Number or keyword
     let s = '';
     while (i < n && !WS[buf[i]] && !DELIM[buf[i]]) { s += String.fromCharCode(buf[i]); i++; }
     if (/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s)) { push(parseFloat(s), tokStart); continue; }
     if (s === 'true' || s === 'false') { push(s === 'true', tokStart); continue; }
     if (s === 'null') { push(null, tokStart); continue; }
-    if (containers.length) continue; // unerwartet – ignorieren
+    if (containers.length) continue; // unexpected – ignore
 
     if (s === 'BI') {
-      // Inline-Bild überspringen: bis "ID", dann bis "EI" (umgeben von Whitespace)
+      // Skip inline image: up to "ID", then up to "EI" (surrounded by whitespace)
       const start = opStart >= 0 ? opStart : tokStart;
       const idPos = findKeyword(buf, i, 'ID');
       let j = idPos < 0 ? n : idPos + 3;

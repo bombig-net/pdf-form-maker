@@ -5,12 +5,15 @@ import { effectiveColor, fromHex, toHex } from '../util/color';
 import { uid, round2 } from '../util/geom';
 import type { Viewer } from './viewer';
 import { LOCALES, locale, datePattern, type LocaleId } from '../util/locale';
+import { insertAddressBlock } from './extras';
+import { saveProjectFile } from './recent';
 
 const TYPES: { v: FieldType; label: string }[] = [
   { v: 'text', label: 'Text field' },
   { v: 'area', label: 'Text area (multi-line)' },
   { v: 'check', label: 'Checkbox' },
   { v: 'radio', label: 'Radio button' },
+  { v: 'dropdown', label: 'Dropdown' },
   { v: 'reset', label: 'Reset button' },
 ];
 const FORMATS: { v: FormatKind; label: string }[] = [
@@ -96,6 +99,14 @@ export class Inspector {
       wrap.append(list);
     }
 
+    wrap.append(h('h3.section-title', {}, 'Insert'));
+    const addr = h('button.btn.secondary', { type: 'button', onclick: () => insertAddressBlock(this.viewer) }, 'Address block');
+    wrap.append(h('div.insert-row', {}, addr), h('p.hint', {}, 'Name, street, postal code, city, email and phone as ready-made fields on the current page.'));
+
+    wrap.append(h('h3.section-title', {}, 'Project'));
+    const save = h('button.btn.secondary', { type: 'button', onclick: () => saveProjectFile() }, 'Save project file');
+    wrap.append(h('div.insert-row', {}, save), h('p.hint', {}, 'Downloads the PDF with all fields and settings as one file, to back it up or pass it on. Open it again from the home screen.'));
+
     wrap.append(h('h3.section-title', {}, 'Options'));
     const region = h<HTMLSelectElement>('select', { name: 'locale', onchange: (e: Event) => { store.options.locale = (e.target as HTMLSelectElement).value; store.emit('options'); } },
       ...(Object.keys(LOCALES) as LocaleId[]).map((id) => {
@@ -113,7 +124,7 @@ export class Inspector {
 
     wrap.append(h('h3.section-title', {}, 'Shortcuts'));
     wrap.append(h('dl.shortcuts', {},
-      ...[['V', 'Select'], ['T / A', 'Text field / text area'], ['C / R', 'Checkbox / radio'], ['⇧ Click', 'Select multiple fields'], ['Drag', 'Selection rectangle on empty space'], ['Del', 'Delete selection'], ['Arrows', 'Move (⇧ = 10 pt)'], ['⌘/Ctrl C / V', 'Copy and paste'], ['⌘/Ctrl A', 'All fields on the page'], ['⌘/Ctrl D', 'Duplicate field'], ['⌘/Ctrl Z', 'Undo'], ['⌘/Ctrl E', 'Test the form']]
+      ...[['V', 'Select'], ['T / A', 'Text field / text area'], ['C / R', 'Checkbox / radio'], ['D', 'Dropdown'], ['⇧ Click', 'Select multiple fields'], ['Drag', 'Selection rectangle on empty space'], ['Del', 'Delete selection'], ['Arrows', 'Move (⇧ = 10 pt)'], ['⌘/Ctrl C / V', 'Copy and paste'], ['⌘/Ctrl A', 'All fields on the page'], ['⌘/Ctrl D', 'Duplicate field'], ['⌘/Ctrl Z', 'Undo'], ['⌘/Ctrl E', 'Test the form']]
         .flatMap(([k, v]) => [h('dt', {}, h('kbd', {}, k)), h('dd', {}, v)])));
     return wrap;
   }
@@ -153,6 +164,7 @@ export class Inspector {
         if (t === 'radio' && !ff.radioValue) ff.radioValue = 'Option1';
         if (t === 'reset' && !ff.label) ff.label = 'Reset form';
         if (t === 'area' && !ff.fontSize) ff.fontSize = 10;
+        if (t === 'dropdown' && !ff.choices?.length) ff.choices = ['Option 1', 'Option 2', 'Option 3'];
       }, ['fields', 'selection']);
       this.render();
     } }, ...TYPES.map((t) => h('option', { value: t.v, selected: t.v === f.type }, t.label)));
@@ -188,6 +200,27 @@ export class Inspector {
       }
       wrap.append(this.row('Alignment', al));
       wrap.append(this.row('Max. length', this.number('maxLength', f.maxLength, (v) => setShared('maxLength', Math.max(0, Math.round(v))), 0, 1, '0 = unlimited')));
+      if (f.type === 'text') {
+        wrap.append(this.toggle('Comb (one box per character)', !!f.comb, (v) => {
+          const fid = f.id;
+          store.commit(() => {
+            const ff = store.fields.find((x) => x.id === fid);
+            if (!ff) return;
+            for (const x of store.fields) if (x.name === ff.name && x.type === ff.type) {
+              x.comb = v;
+              if (v && !(x.maxLength > 0)) x.maxLength = x.format === 'zip' ? 5 : 10;
+            }
+          });
+          this.render();
+        }, 'Splits the field into equal boxes, e.g. for an IBAN, a postal code or a date. The number of boxes is the max. length.'));
+      }
+    }
+    if (f.type === 'dropdown') {
+      wrap.append(h('h3.section-title', {}, 'Options'));
+      const ta = h<HTMLTextAreaElement>('textarea.choices', { name: 'choices', rows: 5, spellcheck: 'false', 'aria-label': 'Dropdown options, one per line',
+        oninput: (e: Event) => setShared('choices', (e.target as HTMLTextAreaElement).value.split('\n')) });
+      ta.value = (f.choices ?? []).join('\n');
+      wrap.append(ta, h('p.hint', {}, 'One option per line, in the order they should appear.'));
     }
     if (f.type !== 'reset') {
       wrap.append(this.toggle('Required', f.required, (v) => setShared('required', v)));

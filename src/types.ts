@@ -53,6 +53,10 @@ export interface Field {
   mailSubject?: string;
   /** Field keeps its own font settings instead of the form font. */
   fontLocked?: boolean;
+  /** Shows its value but cannot be changed in the PDF. */
+  readOnly?: boolean;
+  /** Value when the form is opened: text, a dropdown option, 'on' for a checkbox, the selected value of a radio group. */
+  defaultValue?: string;
 }
 
 /** Form-wide font: 'uniform' applies it to every field without own settings, 'layout' keeps the detected fonts. */

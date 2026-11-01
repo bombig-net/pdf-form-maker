@@ -301,7 +301,9 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         if (f0.maxLength > 0) tf.setMaxLength(f0.maxLength);
         if (f0.comb && f0.type === 'text' && f0.maxLength > 0) tf.enableCombing();
         if (f0.required) tf.enableRequired();
+        if (f0.readOnly) tf.enableReadOnly();
         if (f0.format !== 'none' && f0.type === 'text') tf.disableRichFormatting();
+        const def = f0.defaultValue && !f0.calc ? cleanForFont(font, f0.defaultValue).slice(0, f0.maxLength > 0 ? f0.maxLength : undefined) : '';
         for (const f of group) {
           const rot = pageRot.get(f.pageId)!;
           // Comb fields keep their exact size, so the boxes still match the layout
@@ -310,7 +312,7 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         }
         // Placeholder as ghost text in the appearance (for viewers without JavaScript)
         const ph = f0.placeholder ? cleanForFont(font, f0.type === 'area' ? f0.placeholder : f0.placeholder.replace(/\s*\n\s*/g, ' ')) : '';
-        if (ph) {
+        if (ph && !def) {
           const text = f0.maxLength > 0 ? ph.slice(0, f0.maxLength) : ph;
           tf.acroField.setDefaultAppearance(`/${res} ${f0.fontSize || 0} Tf 0.6 g`);
           tf.setText(text);
@@ -318,6 +320,8 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
           tf.acroField.dict.delete(N('V'));
         }
         finalizeDA(tf.acroField, `/${res} ${f0.fontSize || 0} Tf ${fmtColor(color)} rg`);
+        // Default value: filled in when the form opens, and what \u201cReset\u201d goes back to
+        if (def) { tf.setText(def); tf.updateAppearances(font); tf.acroField.dict.set(N('DV'), PDFHexString.fromText(def)); }
         setTooltip(tf.acroField.dict, f0.tooltip);
         const scripts: Record<string, string | undefined> = buildScripts(f0, color, locale(options.locale));
         const calc = calcScript(f0);
@@ -330,11 +334,14 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         const opts = [...new Set((f0.choices ?? []).map((c) => cleanForFont(font, c).trim()).filter(Boolean))];
         if (opts.length) dd.setOptions(opts);
         if (f0.required) dd.enableRequired();
+        if (f0.readOnly) dd.enableReadOnly();
         for (const f of group) {
           const rot = pageRot.get(f.pageId)!;
           dd.addToPage(pageObj.get(f.pageId)!, { ...rectOpts(inset(f.rect, false), rot), ...noStyle, font, rotate: degrees(rot) });
         }
         finalizeDA(dd.acroField, `/${res} ${f0.fontSize || 0} Tf ${fmtColor(color)} rg`);
+        const ddDef = f0.defaultValue ? cleanForFont(font, f0.defaultValue).trim() : '';
+        if (ddDef && opts.includes(ddDef)) { dd.select(ddDef); dd.updateAppearances(font); dd.acroField.dict.set(N('DV'), PDFHexString.fromText(ddDef)); }
         setTooltip(dd.acroField.dict, f0.tooltip);
       } else if (f0.type === 'check') {
         const cb = form.createCheckBox(name);
@@ -346,6 +353,8 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         }
         setCaption(cb, '4');
         finalizeDA(cb.acroField, `/ZaDb 0 Tf ${fmtColor(color)} rg`);
+        if (f0.readOnly) cb.enableReadOnly();
+        if (f0.defaultValue === 'on') { cb.check(); cb.acroField.dict.set(N('DV'), cb.acroField.dict.get(N('V'))!); }
         setTooltip(cb.acroField.dict, f0.tooltip);
       } else if (f0.type === 'radio') {
         const rg = form.createRadioGroup(name);
@@ -361,6 +370,9 @@ export async function exportPdf(input: ExportInput): Promise<ExportResult> {
         }
         rg.acroField.setFlagTo(1 << 14, true); // NoToggleToOff
         setCaption(rg, 'l');
+        if (f0.readOnly) rg.enableReadOnly();
+        const rDef = group.find((f) => f.defaultValue)?.defaultValue;
+        if (rDef) { try { rg.select(sanitizeName(rDef)); rg.acroField.dict.set(N('DV'), rg.acroField.dict.get(N('V'))!); } catch { /* option was renamed */ } }
         finalizeDA(rg.acroField, `/ZaDb 0 Tf ${fmtColor(color)} rg`);
         setTooltip(rg.acroField.dict, f0.tooltip);
       } else if (f0.type === 'signature') {

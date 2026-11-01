@@ -2,6 +2,7 @@ import { store } from '../state';
 import type { Field } from '../types';
 import { h } from './dom';
 import type { Viewer } from './viewer';
+import { parseFormula } from '../pdf/logic';
 
 export interface Issue { level: 'warn' | 'info'; text: string; fields: Field[] }
 
@@ -36,6 +37,16 @@ export function runChecks(): Issue[] {
     if (!f.name.trim() && f.type !== 'reset') issues.push({ level: 'warn', text: 'A field has no name.', fields: [f] });
     if (f.type === 'dropdown' && !(f.choices ?? []).some((c) => c.trim())) issues.push({ level: 'warn', text: `The dropdown \u201c${label(f)}\u201d has no options.`, fields: [f] });
     if (f.comb && f.type === 'text' && !(f.maxLength > 0)) issues.push({ level: 'warn', text: `\u201c${label(f)}\u201d is set to comb but has no max. length, so it stays a normal text field.`, fields: [f] });
+    if (f.calc && f.type === 'text') {
+      const names = new Set(fields.filter((x) => x.type === 'text' && x.name !== f.name).map((x) => x.name));
+      if (f.calc.op === 'formula') {
+        try { parseFormula(f.calc.formula ?? '', names); } catch (e) { issues.push({ level: 'warn', text: `The formula of \u201c${label(f)}\u201d is invalid: ${(e as Error).message}`, fields: [f] }); }
+      } else if (!(f.calc.fields ?? []).some((n) => names.has(n))) issues.push({ level: 'warn', text: `\u201c${label(f)}\u201d has a calculation but no fields to calculate.`, fields: [f] });
+    }
+    if (f.showIf?.field && !fields.some((x) => x.name === f.showIf!.field && (x.type === 'check' || x.type === 'radio' || x.type === 'dropdown')))
+      issues.push({ level: 'warn', text: `\u201c${label(f)}\u201d depends on \u201c${f.showIf.field}\u201d, which no longer exists. It would stay hidden.`, fields: [f] });
+    if (f.type === 'reset' && f.buttonAction === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.mailTo ?? ''))
+      issues.push({ level: 'warn', text: `The button \u201c${label(f)}\u201d has no valid email address.`, fields: [f] });
     if (f.maxLength > 0 && f.placeholder.length > f.maxLength) issues.push({ level: 'info', text: `The placeholder of “${label(f)}” is longer than the allowed ${f.maxLength} characters and will be cut off.`, fields: [f] });
   }
   // Names

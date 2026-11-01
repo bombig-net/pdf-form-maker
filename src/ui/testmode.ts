@@ -1,10 +1,11 @@
 import { store } from '../state';
 import type { Field } from '../types';
-import { h } from './dom';
+import { h, toast } from './dom';
 import { rectToScreen, type ViewGeom } from '../util/geom';
 import { effectiveColor, toHex } from '../util/color';
 import { sortForTabOrder } from '../util/tabOrder';
 import { locale, datePattern, normalizeDate, parseNumber } from '../util/locale';
+import { computeCalc, conditionMet } from '../pdf/logic';
 
 /** Test mode input values, keyed by field name (fields with the same name share a value). */
 const values = new Map<string, string | boolean>();
@@ -34,7 +35,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
     const r = rectToScreen(g, f.rect);
     // Cover text that is hidden on export here as well (background color of the template)
     const cover = (f.hideText || f.extraHide.length) && f.bgColor ? `;--cover:${toHex(f.bgColor)}` : '';
-    const box = h('div.test-field', { 'data-type': f.type, class: cover ? 'covered' : undefined, style: `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px${cover}` });
+    const box = h('div.test-field', { 'data-type': f.type, 'data-fid': f.id, class: cover ? 'covered' : undefined, style: `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px${cover}` });
     const color = toHex(f.type === 'reset' ? effectiveColor({ ...f, bgColor: f.buttonBg }) : effectiveColor(f));
     const autoSize = f.type === 'area' ? 10 * g.scale : Math.min(r.height * 0.62, 14 * g.scale);
     const size = f.fontSize ? f.fontSize * g.scale : autoSize;
@@ -53,6 +54,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       el.setAttribute('aria-label', label);
       if (f.maxLength > 0) el.maxLength = f.maxLength;
       if (f.required) el.required = true;
+      if (f.calc) { el.readOnly = true; el.classList.add('calc'); }
       Object.assign(el.style, { font, color, textAlign: f.align });
       if (f.type === 'text' && f.comb && f.maxLength > 0) {
         // One box per character: monospace font, spacing to the box width
@@ -90,21 +92,46 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       el.style.setProperty('--tick', color);
       el.addEventListener('change', () => {
         if (f.type === 'check') sync(f.name, el.checked, el);
-        else { values.set(f.name, f.radioValue); }
+        else { values.set(f.name, f.radioValue); refreshLogic(); }
       });
       box.append(el);
     } else {
       const btn = h<HTMLButtonElement>('button', { type: 'button', style: `font:${font};color:${color};background:${toHex(f.buttonBg)}` }, f.label || 'Reset');
       btn.tabIndex = +tab;
-      btn.addEventListener('click', () => { values.clear(); store.emit('mode'); });
+      btn.addEventListener('click', () => {
+        if (f.buttonAction === 'email') { toast(`In Acrobat this opens an email to ${f.mailTo || '(no address)'} with the filled form attached.`); return; }
+        values.clear(); store.emit('mode');
+      });
       box.append(btn);
     }
     overlay.append(box);
+  }
+  queueMicrotask(refreshLogic);
+}
+
+/** Recalculates calculated fields and shows/hides conditional fields, like Acrobat does. */
+function refreshLogic() {
+  if (!store.testMode) return;
+  const loc = locale(store.options.locale);
+  const num = (name: string) => { const n = parseNumber(String(values.get(name) ?? ''), loc); return isNaN(n) ? 0 : n; };
+  const calcs = store.fields.filter((f) => f.calc && f.type === 'text');
+  for (let pass = 0; pass < 3; pass++) for (const f of calcs) {
+    const r = computeCalc(f, num);
+    const text = r === null || !isFinite(r) ? '' : f.format === 'number'
+      ? r.toLocaleString(loc.intl, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : String(Math.round(r * 100) / 100);
+    values.set(f.name, text);
+  }
+  for (const f of calcs) document.querySelectorAll<HTMLInputElement>(`[data-fname="${CSS.escape(f.name)}"]`).forEach((el) => { el.value = String(values.get(f.name) ?? ''); });
+  for (const f of store.fields) {
+    const box = document.querySelector<HTMLElement>(`.test-field[data-fid="${CSS.escape(f.id)}"]`);
+    if (box) box.hidden = !conditionMet(f, (n) => values.get(n));
   }
 }
 
 function sync(name: string, v: string | boolean, from: HTMLElement) {
   values.set(name, v);
+  refreshLogic();
   document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`[data-fname="${CSS.escape(name)}"]`).forEach((el) => {
     if (el === from) return;
     if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = v === true;

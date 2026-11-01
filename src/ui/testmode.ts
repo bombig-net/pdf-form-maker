@@ -54,6 +54,13 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       if (f.maxLength > 0) el.maxLength = f.maxLength;
       if (f.required) el.required = true;
       Object.assign(el.style, { font, color, textAlign: f.align });
+      if (f.type === 'text' && f.comb && f.maxLength > 0) {
+        // One box per character: monospace font, spacing to the box width
+        el.classList.add('comb');
+        el.style.fontFamily = FONT_STACK.Courier;
+        el.style.setProperty('--cell', `${r.width / f.maxLength}px`);
+        el.style.setProperty('--cells', String(f.maxLength));
+      }
       el.addEventListener('beforeinput', (e) => {
         const ev = e as InputEvent;
         if (!ev.data) return;
@@ -62,6 +69,16 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
       });
       el.addEventListener('input', () => sync(f.name, el.value, el));
       el.addEventListener('blur', () => validate(f, el));
+      box.append(el);
+    } else if (f.type === 'dropdown') {
+      const el = h<HTMLSelectElement>('select', {}, h('option', { value: '' }, ''), ...(f.choices ?? []).filter((c) => c.trim()).map((c) => h('option', { value: c }, c)));
+      el.value = String(values.get(f.name) ?? '');
+      el.tabIndex = +tab;
+      el.dataset.fname = f.name;
+      el.setAttribute('aria-label', label);
+      if (f.required) el.required = true;
+      Object.assign(el.style, { font, color });
+      el.addEventListener('change', () => sync(f.name, el.value, el));
       box.append(el);
     } else if (f.type === 'check' || f.type === 'radio') {
       const el = h<HTMLInputElement>('input', { type: f.type === 'check' ? 'checkbox' : 'radio' });
@@ -88,7 +105,7 @@ export function renderTestOverlay(overlay: HTMLElement, fields: Field[], g: View
 
 function sync(name: string, v: string | boolean, from: HTMLElement) {
   values.set(name, v);
-  document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(`[data-fname="${CSS.escape(name)}"]`).forEach((el) => {
+  document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`[data-fname="${CSS.escape(name)}"]`).forEach((el) => {
     if (el === from) return;
     if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = v === true;
     else if (typeof v === 'string') el.value = v;

@@ -151,6 +151,7 @@ export class Inspector {
       h('button', { type: 'button', role: 'radio', 'aria-checked': String(ff.mode === 'layout'), onclick: () => { update({ mode: 'layout' }); this.render(); } }, 'Match layout'));
     const own = store.fields.filter((f) => f.fontLocked).length;
     const children: (Node | null)[] = [mode];
+    const padding = this.row('Padding', this.number('formPadding', ff.padding ?? 0, (v) => update({ padding: Math.max(0, Math.min(20, v)) }), 0, 0.5), 'pt');
     if (ff.mode === 'uniform') {
       const fam = h<HTMLSelectElement>('select', { name: 'formFontFamily', onchange: (e: Event) => update({ family: (e.target as HTMLSelectElement).value }) },
         ...['Helvetica', 'Times', 'Courier'].map((v) => h('option', { value: v, selected: ff.family === v }, `${v} (${v === 'Helvetica' ? 'sans' : v === 'Times' ? 'serif' : 'mono'})`)),
@@ -161,6 +162,7 @@ export class Inspector {
       const size = this.number('formFontSize', ff.size, (v) => update({ size: Math.max(0, Math.min(72, v)) }), 0, 0.5, '0 = auto');
       const color = h<HTMLInputElement>('input', { type: 'color', name: 'formFontColor', value: toHex(ff.color), oninput: (e: Event) => update({ color: fromHex((e.target as HTMLInputElement).value) }) });
       children.push(this.row('Family', fam), ff.family.startsWith('custom:') ? null : this.row('Style', style), this.row('Size', size, 'pt'), this.row('Color', color));
+      children.push(padding);
       children.push(h('p.hint', {}, own
         ? `${own} ${own === 1 ? 'field uses its' : 'fields use their'} own font settings.`
         : 'Applies to every field. Individual fields can still get their own settings.'));
@@ -168,7 +170,7 @@ export class Inspector {
         store.commit(() => { for (const f of store.fields) f.fontLocked = false; });
       } }, 'Use the form font everywhere')));
     } else {
-      children.push(h('p.hint', {}, 'Every field keeps the font, size and color detected from its label in the layout.'));
+      children.push(h('p.hint', {}, 'Every field keeps the font, size and color detected from its label in the layout.'), padding);
     }
     const meta = ff.mode === 'uniform' ? `${FONT_LABEL[ff.family] ?? store.customFonts.find((c) => 'custom:' + c.id === ff.family)?.name ?? 'Custom'} · ${ff.size ? `${ff.size} pt` : 'auto'}` : 'Match layout';
     return this.section('doc:font', 'Form font', children, { open: true, meta });
